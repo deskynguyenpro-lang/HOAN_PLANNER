@@ -1,0 +1,194 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────
+   Design tokens — dark-first. Light là biến thể ghi đè.
+   ───────────────────────────────────────────────────────────── */
+:root,
+:root[data-theme="dark"] {
+  --bg: #0e1220;
+  --surface: #161b2e;
+  --surface-2: #1e2440;
+  --surface-3: #262d4e;
+  --chip: #1e2440;
+  --border: #2a3150;
+  --border-strong: #3a4270;
+  --text: #eef1fa;
+  --text-2: #9ba3c4;
+  --text-3: #626a93;
+
+  --brand: #ff6b5b;
+  --brand-dim: rgba(255, 107, 91, 0.15);
+
+  --work: #f2a93b;
+  --study: #5b8def;
+  --health: #35c793;
+  --research: #9b6ef3;
+
+  --good: #35c793;
+  --warn: #f2a93b;
+  --bad: #ff6b5b;
+
+  --ring: rgba(255, 107, 91, 0.55);
+  --grid: rgba(255, 255, 255, 0.06);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #f4f5fb;
+  --surface: #ffffff;
+  --surface-2: #f7f8fd;
+  --surface-3: #eef0f9;
+  --chip: #f0f1fa;
+  --border: #e7e9f4;
+  --border-strong: #d7dbec;
+  --text: #191d2f;
+  --text-2: #565d83;
+  --text-3: #969dbd;
+
+  --brand: #f5533f;
+  --brand-dim: rgba(245, 83, 63, 0.1);
+
+  --work: #cf8419;
+  --study: #3a5fd4;
+  --health: #12a273;
+  --research: #7c4ede;
+
+  --good: #12a273;
+  --warn: #cf8419;
+  --bad: #f5533f;
+
+  --ring: rgba(245, 83, 63, 0.45);
+  --grid: rgba(20, 24, 48, 0.07);
+  color-scheme: light;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Ambient: quầng sáng rất mờ phía trên, gợi "chân trời / hướng đi" */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(900px 420px at 15% -8%, rgba(91, 141, 239, 0.09), transparent 70%),
+    radial-gradient(760px 380px at 92% -12%, rgba(255, 107, 91, 0.08), transparent 70%);
+}
+
+::selection {
+  background: var(--brand);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Thanh cuộn tinh gọn */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 2px solid var(--bg);
+}
+
+@layer components {
+  .eyebrow {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .num {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-feature-settings: "tnum" 1;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16), 0 14px 40px -22px rgba(0, 0, 0, 0.5);
+  }
+  .headline {
+    font-family: var(--font-display), var(--font-body), sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .hair {
+    height: 1px;
+    background: var(--border);
+  }
+  .btn-primary {
+    background: var(--brand);
+    color: #fff;
+    font-weight: 700;
+    border-radius: 12px;
+    transition: filter 0.15s ease, transform 0.06s ease;
+  }
+  .btn-primary:hover {
+    filter: brightness(1.06);
+  }
+  .btn-primary:active {
+    transform: translateY(1px);
+  }
+  .btn-ghost {
+    background: var(--chip);
+    color: var(--text-2);
+    font-weight: 600;
+    border-radius: 12px;
+    transition: background 0.15s ease;
+  }
+  .btn-ghost:hover {
+    background: var(--surface-3);
+  }
+  .field {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .field:focus {
+    border-color: var(--brand);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
