@@ -89,8 +89,8 @@ export default function LoginPage() {
             </h1>
             <p className="text-text-2 text-[13.5px] leading-relaxed mb-6">
               {step === "email"
-                ? "Nhập email của bạn. Hệ thống gửi một mã 6 số để đăng nhập — không cần mật khẩu, không cần đăng ký trước."
-                : `Đã gửi mã 6 số tới ${email}. Mở email và nhập mã vào ô bên dưới. (Nếu email chỉ có liên kết “Sign in” thì bấm vào đó cũng được.)`}
+                ? "Nhập email của bạn. Hệ thống gửi một liên kết đăng nhập — không cần mật khẩu, không cần đăng ký trước."
+                : `Đã gửi tới ${email}. Mở email và bấm nút “Sign in” — vào được ngay, mở ở trình duyệt nào cũng được.`}
             </p>
 
             {step === "email" ? (
@@ -122,7 +122,7 @@ export default function LoginPage() {
                     <Loader2 size={16} className="animate-spin" />
                   ) : (
                     <>
-                      Gửi mã đăng nhập <ArrowRight size={16} />
+                      Gửi liên kết đăng nhập <ArrowRight size={16} />
                     </>
                   )}
                 </button>
@@ -133,12 +133,24 @@ export default function LoginPage() {
             ) : (
               <form action={codeAction} className="space-y-4">
                 <input type="hidden" name="email" value={email} />
+                <div
+                  className="rounded-xl p-3 text-[12px] leading-relaxed"
+                  style={{
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-2)",
+                  }}
+                >
+                  Cách nhanh nhất: mở email từ <b>Supabase Auth</b> → bấm{" "}
+                  <b>“Sign in”</b>. Không cần nhập gì ở đây.
+                </div>
                 <div className="hair" />
                 <p className="text-text-3 text-[11.5px] leading-relaxed">
-                  Không thấy email? Kiểm tra mục Spam, hoặc gửi lại sau ít phút.
+                  Không thấy email? Kiểm tra Spam, hoặc bấm “Gửi lại”. Nếu email của bạn có
+                  kèm <b>mã 6 số</b> thì nhập vào đây:
                 </p>
                 <label className="block">
-                  <span className="eyebrow">Mã 6 số</span>
+                  <span className="eyebrow">Mã 6 số (nếu có)</span>
                   <div className="mt-2">
                     <OtpInput name="token" disabled={codePending || signingIn} />
                   </div>
