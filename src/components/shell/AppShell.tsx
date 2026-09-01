@@ -2,8 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Loader2, Check, AlertTriangle } from "lucide-react";
 import {
+  Compass,
+  Loader2,
+  Check,
+  AlertTriangle,
+  LogOut,
   LayoutDashboard,
   CalendarCheck2,
   CalendarRange,
@@ -123,6 +127,14 @@ export function AppShell({
             <ThemeToggle />
             <SettingsMenu align="left" />
           </div>
+          <form action="/auth/signout" method="post">
+            <button
+              type="submit"
+              className="btn-ghost w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] rounded-xl hover:!text-bad"
+            >
+              <LogOut size={16} /> Đăng xuất
+            </button>
+          </form>
           <div className="px-2 pt-1">
             <div className="text-text-3 text-[10.5px] truncate">{email}</div>
             <div className="mt-1">

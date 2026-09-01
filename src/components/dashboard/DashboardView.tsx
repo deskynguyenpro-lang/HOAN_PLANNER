@@ -2,33 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  Flame,
-  Clock,
-  Scale,
-  ArrowRight,
-  ClipboardList,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { StatChip, ProgressBar, PillarDot, Reveal } from "@/components/ui/bits";
+import { ProgressBar, PillarDot, Reveal } from "@/components/ui/bits";
 import { useStore } from "@/lib/data/store";
 import { PILLARS } from "@/lib/domain/pillars";
-import {
-  addDays,
-  fmtHours,
-  parseKey,
-  startOfWeek,
-  toKey,
-  fmtVN,
-} from "@/lib/domain/dates";
+import { addDays, fmtHours, startOfWeek, toKey, fmtVN } from "@/lib/domain/dates";
 import { categoryTotals } from "@/lib/domain/stats";
 import { computeStreak } from "@/lib/domain/streak";
 import {
   computeWeeklyMetrics,
   computeDriftAlerts,
   trajectoryData,
-  scoreLabel,
 } from "@/lib/domain/weekly";
 import {
   fetchWeeklyReviews,
@@ -40,6 +25,8 @@ import { TrajectoryRibbon } from "./TrajectoryRibbon";
 import { DriftAlerts } from "./DriftAlerts";
 import { ScoreRing } from "./ScoreRing";
 import { OnboardingCard } from "./OnboardingCard";
+import { SpotlightCards } from "./SpotlightCards";
+import { longestStreak } from "@/lib/domain/streak";
 
 function greeting() {
   const h = new Date().getHours();
@@ -107,7 +94,6 @@ export function DashboardView() {
 
   const name = email ? email.split("@")[0] : "";
   const latestReview = reviews?.[0];
-  const deltaHours = wk.completedHours - lastWk.completedHours;
 
   const activeGoals = goals.filter((g) => !g.archived);
   const isEmpty = activeGoals.length === 0 && objectives.filter((o) => !o.archived).length === 0;
@@ -116,6 +102,10 @@ export function DashboardView() {
     [goals, logs],
   );
   const todayDone = todayPlanned.filter((b) => b.completed).length;
+  const todayHours = todayPlanned
+    .filter((b) => b.completed)
+    .reduce((s, b) => s + b.duration, 0);
+  const bestStreak = useMemo(() => longestStreak(goals, logs), [goals, logs]);
 
   const pillarRows = PILLARS.map((p) => ({
     ...p,
@@ -123,23 +113,51 @@ export function DashboardView() {
     pct: week7Total > 0 ? Math.round(((week7[p.id] || 0) / week7Total) * 100) : 0,
   })).sort((a, b) => b.hours - a.hours);
 
+  const initial = (name || email || "?").charAt(0).toUpperCase();
+
   return (
     <div className="space-y-5">
       <Reveal>
-        <div className="flex items-end justify-between gap-4 flex-wrap">
-          <div>
-            <div className="eyebrow mb-1.5">{fmtVN(new Date())}</div>
-            <h1 className="display text-[27px] lg:text-[30px]">
-              {greeting()}
-              {name ? `, ${name}` : ""}
-            </h1>
-            <p className="text-text-2 text-[13px] mt-1.5">
-              {isEmpty
-                ? "Chưa có kế hoạch nào — dựng cái đầu tiên bên dưới."
-                : todayPlanned.length === 0
-                  ? "Hôm nay chưa có buổi nào trong lịch trình."
-                  : `Hôm nay: ${todayDone}/${todayPlanned.length} buổi hoàn thành.`}
-            </p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-3.5">
+            <div
+              className="flex items-center justify-center rounded-2xl flex-shrink-0 headline text-[18px] text-white"
+              style={{
+                width: 46,
+                height: 46,
+                background: "linear-gradient(145deg, var(--brand-2), var(--brand))",
+                boxShadow: "0 10px 24px -10px color-mix(in srgb, var(--brand) 70%, transparent)",
+              }}
+            >
+              {initial}
+            </div>
+            <div>
+              <div className="eyebrow mb-1">{fmtVN(new Date())}</div>
+              <h1 className="display text-[24px] lg:text-[28px]">
+                {greeting()}
+                {name ? `, ${name}` : ""}
+              </h1>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                {streak > 0 && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                    style={{
+                      background: "color-mix(in srgb, var(--work) 16%, transparent)",
+                      color: "var(--work)",
+                    }}
+                  >
+                    🔥 {streak} ngày liên tiếp
+                  </span>
+                )}
+                <span className="text-text-2 text-[12.5px]">
+                  {isEmpty
+                    ? "Chưa có kế hoạch nào — dựng cái đầu tiên bên dưới."
+                    : todayPlanned.length === 0
+                      ? "Hôm nay chưa có buổi nào trong lịch trình."
+                      : `Hôm nay ${todayDone}/${todayPlanned.length} buổi xong.`}
+                </span>
+              </div>
+            </div>
           </div>
           <Link
             href="/hom-nay"
@@ -150,45 +168,27 @@ export function DashboardView() {
         </div>
       </Reveal>
 
-      {isEmpty && (
+      {isEmpty ? (
         <Reveal delay={40}>
           <OnboardingCard />
         </Reveal>
+      ) : (
+        <Reveal delay={40}>
+          <SpotlightCards
+            todayDone={todayDone}
+            todayTotal={todayPlanned.length}
+            todayHours={todayHours}
+            weekScore={wk.score}
+            adherence={wk.adherence}
+            deltaHoursPct={wk.deltaHoursPct}
+            streak={streak}
+            bestStreak={bestStreak}
+          />
+        </Reveal>
       )}
 
-      <Reveal delay={isEmpty ? 80 : 40}>
-        <TrajectoryRibbon rows={trajectory} />
-      </Reveal>
-
       <Reveal delay={80}>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-          <StatChip
-            icon={Flame}
-            label="Streak"
-            value={`${streak} ngày`}
-            color="var(--work)"
-          />
-          <StatChip
-            icon={Clock}
-            label="Giờ tuần này"
-            value={fmtHours(wk.completedHours)}
-            color="var(--study)"
-            sub={`${deltaHours >= 0 ? "+" : "−"}${fmtHours(Math.abs(deltaHours))} so với tuần trước`}
-          />
-          <StatChip
-            icon={ClipboardList}
-            label="Bám kế hoạch"
-            value={wk.adherence === null ? "—" : `${wk.adherence}%`}
-            color="var(--health)"
-          />
-          <StatChip
-            icon={Scale}
-            label="Điểm tuần"
-            value={`${wk.score}`}
-            color="var(--research)"
-            sub={scoreLabel(wk.score).text}
-          />
-        </div>
+        <TrajectoryRibbon rows={trajectory} />
       </Reveal>
 
       {!isEmpty && (
