@@ -64,20 +64,33 @@ export async function verifyCode(
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.verifyOtp({
-    email,
-    token,
-    type: "email",
-  });
 
-  if (error || !data.user) {
+  // Tuỳ người dùng mới hay cũ, Supabase gắn "type" khác nhau cho mã OTP email.
+  // Thử lần lượt để không phụ thuộc vào trạng thái tài khoản.
+  const types = ["email", "magiclink", "signup"] as const;
+  let user = null;
+  let lastError: string | null = null;
+  for (const type of types) {
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type });
+    if (!error && data.user) {
+      user = data.user;
+      break;
+    }
+    lastError = error?.message ?? null;
+  }
+
+  if (!user) {
     return {
       step: "sent",
       email,
-      error: "Mã không đúng hoặc đã hết hạn. Gửi lại và thử mã mới nhất.",
+      error:
+        "Mã không đúng hoặc đã hết hạn. Bấm “Gửi lại” và nhập mã mới nhất." +
+        (lastError ? ` (${lastError})` : ""),
       notice: "",
     };
   }
+
+  const data = { user };
 
   if (!isEmailAllowed(data.user.email)) {
     await supabase.auth.signOut();

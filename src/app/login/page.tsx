@@ -20,7 +20,6 @@ export default function LoginPage() {
     }
   }, [emailState]);
 
-  const notice = emailState.notice;
   const error = step === "sent" ? codeState.error || emailState.error : emailState.error;
 
   return (
@@ -52,7 +51,7 @@ export default function LoginPage() {
           <p className="text-text-2 text-[13.5px] leading-relaxed mb-5">
             {step === "email"
               ? "Nhập email đã được cấp quyền. Hệ thống gửi cho bạn một liên kết đăng nhập, không cần mật khẩu."
-              : notice || `Đã gửi liên kết tới ${email}.`}
+              : `Đã gửi tới ${email}. Mở email từ “Supabase Auth” và bấm nút “Sign in” — bấm ngay trên trình duyệt này.`}
           </p>
 
           {step === "email" ? (
@@ -92,8 +91,13 @@ export default function LoginPage() {
           ) : (
             <form action={codeAction} className="space-y-3">
               <input type="hidden" name="email" value={email} />
+              <div className="hair" />
+              <p className="text-text-3 text-[11.5px] leading-relaxed">
+                Không thấy email? Kiểm tra mục Spam, hoặc gửi lại sau ít phút. Nếu email
+                của bạn có kèm <b>mã 6 số</b> thì nhập vào đây:
+              </p>
               <label className="block">
-                <span className="eyebrow">Mã 6 số (nếu email có kèm mã)</span>
+                <span className="eyebrow">Mã 6 số</span>
                 <div className="relative mt-1.5">
                   <KeyRound
                     size={16}
@@ -117,9 +121,21 @@ export default function LoginPage() {
                 {codePending ? <Loader2 size={16} className="animate-spin" /> : "Xác nhận mã"}
               </button>
               <button
+                type="submit"
+                formAction={emailAction}
+                disabled={emailPending}
+                className="btn-ghost w-full py-2.5 text-[13px] flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {emailPending ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  "Gửi lại email"
+                )}
+              </button>
+              <button
                 type="button"
                 onClick={() => setStep("email")}
-                className="btn-ghost w-full py-2.5 text-[13px]"
+                className="w-full py-2 text-[12px] text-text-3 hover:text-text-2 transition"
               >
                 Đổi email khác
               </button>
