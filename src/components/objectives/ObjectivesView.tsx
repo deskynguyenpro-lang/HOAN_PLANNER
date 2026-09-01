@@ -115,6 +115,7 @@ function ObjectiveCard({
                     stroke={ct.brand}
                     strokeWidth={2.5}
                     dot={{ r: 3 }}
+                    isAnimationActive={false}
                   />
                 </LineChart>
               </ResponsiveContainer>

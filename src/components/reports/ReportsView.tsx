@@ -297,6 +297,7 @@ export function ReportsView() {
                         outerRadius={64}
                         paddingAngle={2}
                         stroke="none"
+                        isAnimationActive={false}
                       >
                         {pieData.map((p, i) => (
                           <Cell key={i} fill={p.color} />
@@ -384,7 +385,13 @@ export function ReportsView() {
                 />
                 <Tooltip contentStyle={ct.tooltip} cursor={{ fill: ct.grid }} />
                 {PILLARS.map((p) => (
-                  <Bar key={p.id} dataKey={p.id} stackId="a" fill={pillarHex[p.id]} />
+                  <Bar
+                    key={p.id}
+                    dataKey={p.id}
+                    stackId="a"
+                    fill={pillarHex[p.id]}
+                    isAnimationActive={false}
+                  />
                 ))}
               </BarChart>
             </ResponsiveContainer>
@@ -414,7 +421,7 @@ export function ReportsView() {
                   tickLine={false}
                 />
                 <Tooltip contentStyle={ct.tooltip} cursor={{ fill: ct.grid }} />
-                <Bar dataKey="pct" radius={[6, 6, 0, 0]}>
+                <Bar dataKey="pct" radius={[6, 6, 0, 0]} isAnimationActive={false}>
                   {weekdayPerf.map((d, i) => (
                     <Cell
                       key={i}

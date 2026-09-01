@@ -6,6 +6,7 @@ const config: Config = {
     extend: {
       colors: {
         bg: "var(--bg)",
+        "bg-2": "var(--bg-2)",
         surface: "var(--surface)",
         "surface-2": "var(--surface-2)",
         "surface-3": "var(--surface-3)",
@@ -16,6 +17,7 @@ const config: Config = {
         "text-2": "var(--text-2)",
         "text-3": "var(--text-3)",
         brand: "var(--brand)",
+        "brand-2": "var(--brand-2)",
         "brand-dim": "var(--brand-dim)",
         work: "var(--work)",
         study: "var(--study)",

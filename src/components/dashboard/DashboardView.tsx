@@ -35,9 +35,11 @@ import {
   saveWeeklyReview,
   type WeeklyReviewRow,
 } from "@/lib/data/weekly-reviews";
+import { getEffectiveBlocks } from "@/lib/domain/schedule";
 import { TrajectoryRibbon } from "./TrajectoryRibbon";
 import { DriftAlerts } from "./DriftAlerts";
 import { ScoreRing } from "./ScoreRing";
+import { OnboardingCard } from "./OnboardingCard";
 
 function greeting() {
   const h = new Date().getHours();
@@ -107,6 +109,14 @@ export function DashboardView() {
   const latestReview = reviews?.[0];
   const deltaHours = wk.completedHours - lastWk.completedHours;
 
+  const activeGoals = goals.filter((g) => !g.archived);
+  const isEmpty = activeGoals.length === 0 && objectives.filter((o) => !o.archived).length === 0;
+  const todayPlanned = useMemo(
+    () => getEffectiveBlocks(toKey(new Date()), goals, logs).filter((b) => !b.hidden),
+    [goals, logs],
+  );
+  const todayDone = todayPlanned.filter((b) => b.completed).length;
+
   const pillarRows = PILLARS.map((p) => ({
     ...p,
     hours: week7[p.id] || 0,
@@ -118,22 +128,35 @@ export function DashboardView() {
       <Reveal>
         <div className="flex items-end justify-between gap-4 flex-wrap">
           <div>
-            <div className="eyebrow mb-1">{fmtVN(new Date())}</div>
-            <h1 className="headline text-[24px] leading-tight">
+            <div className="eyebrow mb-1.5">{fmtVN(new Date())}</div>
+            <h1 className="display text-[27px] lg:text-[30px]">
               {greeting()}
               {name ? `, ${name}` : ""}
             </h1>
+            <p className="text-text-2 text-[13px] mt-1.5">
+              {isEmpty
+                ? "Chưa có kế hoạch nào — dựng cái đầu tiên bên dưới."
+                : todayPlanned.length === 0
+                  ? "Hôm nay chưa có buổi nào trong lịch trình."
+                  : `Hôm nay: ${todayDone}/${todayPlanned.length} buổi hoàn thành.`}
+            </p>
           </div>
           <Link
             href="/hom-nay"
-            className="btn-primary px-4 py-2.5 text-[13px] flex items-center gap-2"
+            className="btn-primary px-4 py-2.5 text-[13px] flex items-center gap-2 self-start"
           >
             Lên kế hoạch hôm nay <ArrowRight size={15} />
           </Link>
         </div>
       </Reveal>
 
-      <Reveal delay={40}>
+      {isEmpty && (
+        <Reveal delay={40}>
+          <OnboardingCard />
+        </Reveal>
+      )}
+
+      <Reveal delay={isEmpty ? 80 : 40}>
         <TrajectoryRibbon rows={trajectory} />
       </Reveal>
 
@@ -150,7 +173,7 @@ export function DashboardView() {
             label="Giờ tuần này"
             value={fmtHours(wk.completedHours)}
             color="var(--study)"
-            sub={`${deltaHours >= 0 ? "+" : ""}${fmtHours(Math.abs(deltaHours))} so với tuần trước`}
+            sub={`${deltaHours >= 0 ? "+" : "−"}${fmtHours(Math.abs(deltaHours))} so với tuần trước`}
           />
           <StatChip
             icon={ClipboardList}
@@ -168,12 +191,14 @@ export function DashboardView() {
         </div>
       </Reveal>
 
-      <Reveal delay={120}>
-        <div>
-          <div className="eyebrow mb-2">Cảnh báo lệch hướng</div>
-          <DriftAlerts alerts={alerts} />
-        </div>
-      </Reveal>
+      {!isEmpty && (
+        <Reveal delay={120}>
+          <div>
+            <div className="eyebrow mb-2">Cảnh báo lệch hướng</div>
+            <DriftAlerts alerts={alerts} />
+          </div>
+        </Reveal>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Reveal delay={160}>

@@ -32,7 +32,7 @@ export default function LoginPage() {
             style={{
               width: 46,
               height: 46,
-              background: "linear-gradient(140deg, var(--brand), #ff9a6b)",
+              background: "linear-gradient(145deg, var(--brand-2), var(--brand))",
               boxShadow: "0 10px 30px -8px rgba(255,107,91,0.5)",
             }}
           >
@@ -83,7 +83,7 @@ export default function LoginPage() {
                   <Loader2 size={16} className="animate-spin" />
                 ) : (
                   <>
-                    Gửi liên kết đăng nhập <ArrowRight size={16} />
+                    Gửi mã đăng nhập <ArrowRight size={16} />
                   </>
                 )}
               </button>

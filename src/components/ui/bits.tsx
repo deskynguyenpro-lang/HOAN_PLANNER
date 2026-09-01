@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { pillarOf } from "@/lib/domain/pillars";
 
@@ -20,20 +20,42 @@ export function StatChip({
 }) {
   return (
     <div
-      className="rounded-2xl p-3.5 flex-1 min-w-0"
-      style={{ background: "color-mix(in srgb, " + color + " 10%, transparent)", border: "1px solid color-mix(in srgb, " + color + " 22%, transparent)" }}
+      className="card card-hover relative overflow-hidden flex-1 min-w-0 p-4"
+      style={{ borderRadius: 16 }}
     >
-      <div
-        className="rounded-lg flex items-center justify-center mb-2"
-        style={{ width: 26, height: 26, background: color }}
-      >
-        <Icon size={13} color="#fff" strokeWidth={2.4} />
+      {/* vệt màu trụ cột phía trên */}
+      <span
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-[3px]"
+        style={{
+          background: `linear-gradient(90deg, ${color}, color-mix(in srgb, ${color} 30%, transparent))`,
+        }}
+      />
+      {/* icon mờ làm nền */}
+      <Icon
+        aria-hidden
+        size={62}
+        strokeWidth={1.4}
+        className="absolute -right-3 -bottom-3 opacity-[0.07]"
+        style={{ color }}
+      />
+      <div className="flex items-center gap-2 mb-2.5">
+        <span
+          className="rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{
+            width: 24,
+            height: 24,
+            background: `color-mix(in srgb, ${color} 16%, transparent)`,
+          }}
+        >
+          <Icon size={13} strokeWidth={2.4} style={{ color }} />
+        </span>
+        <span className="eyebrow" style={{ color }}>
+          {label}
+        </span>
       </div>
-      <div className="eyebrow" style={{ color }}>
-        {label}
-      </div>
-      <div className="headline text-[19px] mt-0.5 num">{value}</div>
-      {sub && <div className="text-text-3 text-[11px] mt-0.5">{sub}</div>}
+      <div className="display text-[24px] num text-text">{value}</div>
+      {sub && <div className="text-text-3 text-[11px] mt-1 leading-snug">{sub}</div>}
     </div>
   );
 }
@@ -139,69 +161,16 @@ export function PillarTag({ id }: { id: string }) {
   );
 }
 
-/* ─── Scroll reveal ──────────────────────────────────────────────────── */
+/* ─── Reveal — bọc nội dung, KHÔNG ẩn (giữ chỗ cho hiệu ứng vào trang) ──── */
 export function Reveal({
   children,
-  delay = 0,
   className = "",
 }: {
   children: ReactNode;
   delay?: number;
   className?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [shown, setShown] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) {
-      setShown(true);
-      return;
-    }
-    const reduce =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce || typeof IntersectionObserver === "undefined") {
-      setShown(true);
-      return;
-    }
-    // Nếu đã nằm trong khung nhìn ngay khi mount thì hiện luôn.
-    const rect = el.getBoundingClientRect();
-    if (rect.top < window.innerHeight) {
-      setShown(true);
-      return;
-    }
-    const io = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) {
-          setShown(true);
-          io.disconnect();
-        }
-      },
-      { threshold: 0.05 },
-    );
-    io.observe(el);
-    // Lưới an toàn: dù sao cũng hiện sau 600ms.
-    const t = window.setTimeout(() => setShown(true), 600);
-    return () => {
-      io.disconnect();
-      window.clearTimeout(t);
-    };
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      className={className}
-      style={{
-        opacity: shown ? 1 : 0,
-        transform: shown ? "translateY(0)" : "translateY(12px)",
-        transition: `opacity 0.55s ease ${delay}ms, transform 0.55s cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
-      }}
-    >
-      {children}
-    </div>
-  );
+  return <div className={className}>{children}</div>;
 }
 
 /* ─── Empty state ────────────────────────────────────────────────────── */
@@ -219,13 +188,23 @@ export function EmptyState({
   return (
     <div className="text-center py-10 px-4">
       <div
-        className="mx-auto mb-3 rounded-2xl flex items-center justify-center"
-        style={{ width: 44, height: 44, background: "var(--chip)" }}
+        className="mx-auto mb-3.5 rounded-2xl flex items-center justify-center"
+        style={{
+          width: 52,
+          height: 52,
+          background:
+            "linear-gradient(155deg, color-mix(in srgb, var(--brand) 22%, transparent), color-mix(in srgb, var(--study) 16%, transparent))",
+          border: "1px solid var(--border)",
+        }}
       >
-        <Icon size={20} className="text-text-3" />
+        <Icon size={22} className="text-text-2" strokeWidth={1.8} />
       </div>
-      <p className="text-text text-[14px] font-semibold">{title}</p>
-      {hint && <p className="text-text-3 text-[12.5px] mt-1 max-w-[320px] mx-auto leading-relaxed">{hint}</p>}
+      <p className="headline text-[15px]">{title}</p>
+      {hint && (
+        <p className="text-text-3 text-[12.5px] mt-1.5 max-w-[340px] mx-auto leading-relaxed">
+          {hint}
+        </p>
+      )}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

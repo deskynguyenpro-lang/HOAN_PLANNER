@@ -71,7 +71,7 @@ export function AppShell({
             style={{
               width: 34,
               height: 34,
-              background: "linear-gradient(140deg, var(--brand), #ff9a6b)",
+              background: "linear-gradient(145deg, var(--brand-2), var(--brand))",
             }}
           >
             <Compass size={17} color="#fff" strokeWidth={2.3} />
@@ -92,13 +92,26 @@ export function AppShell({
               <Link
                 key={n.href}
                 href={n.href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px] font-semibold transition"
+                aria-current={active ? "page" : undefined}
+                className="group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px] font-semibold transition-colors"
                 style={{
                   background: active ? "var(--brand-dim)" : "transparent",
                   color: active ? "var(--brand)" : "var(--text-2)",
                 }}
               >
-                <Icon size={17} />
+                <span
+                  aria-hidden
+                  className="absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full transition-all"
+                  style={{
+                    width: active ? 3 : 0,
+                    height: active ? 18 : 0,
+                    background: "linear-gradient(180deg, var(--brand-2), var(--brand))",
+                  }}
+                />
+                <Icon
+                  size={17}
+                  className={active ? "" : "group-hover:text-text transition-colors"}
+                />
                 {n.label}
               </Link>
             );
@@ -136,7 +149,7 @@ export function AppShell({
               style={{
                 width: 30,
                 height: 30,
-                background: "linear-gradient(140deg, var(--brand), #ff9a6b)",
+                background: "linear-gradient(145deg, var(--brand-2), var(--brand))",
               }}
             >
               <Compass size={15} color="#fff" strokeWidth={2.3} />
@@ -150,7 +163,10 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="mx-auto max-w-5xl px-4 lg:px-8 py-5 lg:py-8 pb-28 lg:pb-12">
+        <main
+          key={pathname}
+          className="page-enter mx-auto max-w-5xl px-4 lg:px-8 py-5 lg:py-8 pb-28 lg:pb-12"
+        >
           {children}
         </main>
       </div>
