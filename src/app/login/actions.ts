@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isEmailAllowed } from "@/lib/auth/allowlist";
 import { siteUrl } from "@/lib/site";
@@ -10,6 +9,8 @@ export interface LoginState {
   email: string;
   error: string;
   notice: string;
+  /** true khi đăng nhập thành công — client sẽ tự chuyển trang. */
+  ok?: boolean;
 }
 
 export async function requestLogin(
@@ -90,12 +91,13 @@ export async function verifyCode(
     };
   }
 
-  const data = { user };
-
-  if (!isEmailAllowed(data.user.email)) {
+  if (!isEmailAllowed(user.email)) {
     await supabase.auth.signOut();
     return { step: "email", email, error: "Email này chưa được cấp quyền.", notice: "" };
   }
 
-  redirect("/tong-quan");
+  // Phiên đã được ghi vào cookie. Không dùng redirect() ở đây — một số trình
+  // duyệt di động bỏ cookie khi redirect ngay trong Server Action. Trả về ok
+  // để client tự điều hướng bằng full-page load (đảm bảo đọc cookie mới).
+  return { step: "sent", email, error: "", notice: "", ok: true };
 }

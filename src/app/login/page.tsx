@@ -31,6 +31,7 @@ export default function LoginPage() {
 
   const [step, setStep] = useState<"email" | "sent">("email");
   const [email, setEmail] = useState("");
+  const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
     if (emailState.step === "sent") {
@@ -38,6 +39,15 @@ export default function LoginPage() {
       setEmail(emailState.email);
     }
   }, [emailState]);
+
+  // Đăng nhập thành công → chuyển trang bằng full-page load để cookie phiên
+  // được đọc lại chắc chắn (đặc biệt trên trình duyệt di động).
+  useEffect(() => {
+    if (codeState.ok) {
+      setSigningIn(true);
+      window.location.assign("/tong-quan");
+    }
+  }, [codeState]);
 
   const error = step === "sent" ? codeState.error || emailState.error : emailState.error;
 
@@ -130,15 +140,22 @@ export default function LoginPage() {
                 <label className="block">
                   <span className="eyebrow">Mã 6 số</span>
                   <div className="mt-2">
-                    <OtpInput name="token" disabled={codePending} />
+                    <OtpInput name="token" disabled={codePending || signingIn} />
                   </div>
                 </label>
                 <button
                   type="submit"
-                  disabled={codePending}
+                  disabled={codePending || signingIn}
                   className="btn-primary w-full py-3 text-sm flex items-center justify-center gap-2 disabled:opacity-60"
                 >
-                  {codePending ? <Loader2 size={16} className="animate-spin" /> : "Xác nhận mã"}
+                  {codePending || signingIn ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      {signingIn ? "Đang vào…" : ""}
+                    </>
+                  ) : (
+                    "Xác nhận mã"
+                  )}
                 </button>
                 <div className="flex items-center gap-2">
                   <button
