@@ -63,14 +63,18 @@ git push -u origin main
    |---|---|---|
    | `NEXT_PUBLIC_SUPABASE_URL` | Project URL ở Bước 1.4 | ✅ |
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon public key ở Bước 1.5 | ✅ |
-   | `ALLOWED_EMAILS` | (các) email được phép đăng nhập, cách nhau bằng dấu phẩy | ✅ |
    | `NEXT_PUBLIC_SITE_URL` | tạm để trống, điền ở Bước 4 | – |
+   | `ALLOWED_EMAILS` | danh sách email được phép (xem bên dưới) | – |
    | `ANTHROPIC_API_KEY` | khoá Anthropic (nếu dùng AI) | – |
    | `ANTHROPIC_MODEL` | mặc định `claude-sonnet-5` nếu bỏ trống | – |
 
-   > **`ALLOWED_EMAILS`**: đây là "danh sách cho phép". Đặt đúng địa chỉ email bạn sẽ dùng để đăng nhập —
-   > **inbox đó phải còn dung lượng** vì mã / liên kết đăng nhập gửi qua email. Muốn đổi về sau:
-   > sửa biến này trên Vercel rồi **Redeploy**. Ví dụ nhiều người: `a@gmail.com,b@gmail.com`.
+   > **`ALLOWED_EMAILS`** quyết định ai vào được:
+   > - **Không đặt biến (hoặc để trống)** → **mở**: bất kỳ ai có email đều tự đăng ký & đăng nhập
+   >   (mỗi người một không gian dữ liệu riêng).
+   > - **Đặt giá trị** (vd `a@gmail.com,b@gmail.com`, cách nhau bằng dấu phẩy, không dấu cách) →
+   >   **khoá**: chỉ các email đó vào được.
+   >
+   > Đổi lúc nào cũng được: sửa/xoá biến trên Vercel rồi **Redeploy**.
 
 5. Bấm **Deploy**. Đợi ~1–2 phút → có link dạng `https://<tên-repo>.vercel.app`.
 
@@ -138,8 +142,8 @@ supabase/schema.sql            ← lược đồ CSDL + Row Level Security
 ## Dữ liệu & riêng tư
 
 - Mỗi người chỉ đọc/ghi được dữ liệu của chính mình (Row Level Security ở Postgres).
-- Chỉ email trong `ALLOWED_EMAILS` mới đăng nhập được (kiểm tra ở middleware, trang đăng nhập và callback).
-- Không có mật khẩu lưu ở đâu — đăng nhập bằng liên kết / mã một lần gửi qua email.
+- Mặc định **mở đăng ký**: ai có email cũng dùng được. Đặt `ALLOWED_EMAILS` để khoá lại chỉ vài người.
+- Không có mật khẩu lưu ở đâu — đăng nhập bằng mã 6 số (hoặc liên kết) một lần gửi qua email.
 - Sao lưu ngoài: **Thiết lập → Sao lưu / Khôi phục** (xuất/nhập JSON).
 
 ## Xử lý sự cố

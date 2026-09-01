@@ -50,8 +50,8 @@ export default function LoginPage() {
           </h1>
           <p className="text-text-2 text-[13.5px] leading-relaxed mb-5">
             {step === "email"
-              ? "Nhập email đã được cấp quyền. Hệ thống gửi cho bạn một liên kết đăng nhập, không cần mật khẩu."
-              : `Đã gửi tới ${email}. Mở email từ “Supabase Auth” và bấm nút “Sign in” — bấm ngay trên trình duyệt này.`}
+              ? "Nhập email của bạn. Hệ thống gửi một mã 6 số để đăng nhập — không cần mật khẩu, không cần đăng ký trước."
+              : `Đã gửi mã 6 số tới ${email}. Mở email và nhập mã vào ô bên dưới. (Nếu email chỉ có liên kết “Sign in” thì bấm vào đó cũng được.)`}
           </p>
 
           {step === "email" ? (
@@ -148,7 +148,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-text-3 text-[11.5px] text-center mt-5 leading-relaxed">
-          Công cụ cá nhân. Chỉ những email trong danh sách cho phép mới đăng nhập được.
+          Mỗi người có không gian kế hoạch riêng, dữ liệu tách biệt hoàn toàn.
         </p>
       </div>
     </main>
