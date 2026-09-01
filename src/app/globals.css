@@ -238,6 +238,30 @@ body::before {
     background-clip: text;
     color: transparent;
   }
+
+  /* Ô nhập mã 6 số (trang đăng nhập) */
+  .otp-box {
+    width: 100%;
+    max-width: 46px;
+    height: 54px;
+    text-align: center;
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 20px;
+    font-weight: 600;
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    outline: none;
+    transition: border-color 0.15s ease, transform 0.1s ease, background 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .otp-box:focus {
+    border-color: var(--brand);
+    background: var(--surface);
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 3px var(--brand-dim);
+  }
 }
 
 @keyframes reveal-in {
