@@ -275,6 +275,32 @@ body::before {
   }
 }
 
+@keyframes sheet-in {
+  from {
+    opacity: 0.4;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (min-width: 640px) {
+  @keyframes sheet-in {
+    from {
+      opacity: 0.6;
+      transform: translateX(28px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+}
+.animate-sheet-in {
+  animation: sheet-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Hiệu ứng vào trang: một lần, nhẹ. Không dùng fill-mode để nếu animation
    bị tạm dừng (tab nền) thì nội dung vẫn ở trạng thái hiển thị bình thường. */
 .page-enter {

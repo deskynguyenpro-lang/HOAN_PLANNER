@@ -2,18 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { ClipboardCopy, Download, Upload } from "lucide-react";
-import { Modal } from "@/components/ui/Modal";
+import { Sheet } from "@/components/ui/Sheet";
 import { Segmented } from "@/components/ui/bits";
+import { useToast } from "@/components/ui/Toast";
 import { useStore } from "@/lib/data/store";
 import { normalizePillar } from "@/lib/domain/pillars";
 import type { AppData } from "@/lib/domain/types";
 
 export function BackupModal({ onClose }: { onClose: () => void }) {
   const { goals, logs, objectives, replaceAll } = useStore();
+  const { toast } = useToast();
   const [mode, setMode] = useState<"export" | "import">("export");
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState("");
-  const [copied, setCopied] = useState(false);
 
   const exportText = useMemo(
     () =>
@@ -28,10 +29,9 @@ export function BackupModal({ onClose }: { onClose: () => void }) {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(exportText);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      toast("Đã copy toàn bộ dữ liệu.");
     } catch {
-      /* clipboard bị chặn — textarea vẫn chọn tay được */
+      toast("Không copy được — chọn tay trong ô bên trên rồi Ctrl+C.", "error");
     }
   };
 
@@ -43,6 +43,7 @@ export function BackupModal({ onClose }: { onClose: () => void }) {
     a.download = `ke-hoach-sao-luu-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    toast("Đã tải file sao lưu.");
   };
 
   const doImport = () => {
@@ -51,13 +52,13 @@ export function BackupModal({ onClose }: { onClose: () => void }) {
       if (!data || !Array.isArray(data.goals) || typeof data.logs !== "object") {
         throw new Error("shape");
       }
-      // chuẩn hoá trụ cột cũ (personal/other) về 4 trụ cột
       const normalized: AppData = {
         goals: data.goals.map((g) => ({ ...g, category: normalizePillar(g.category) })),
         logs: (data.logs as AppData["logs"]) || {},
         objectives: (data.objectives as AppData["objectives"]) || [],
       };
       replaceAll(normalized);
+      toast("Đã khôi phục dữ liệu.");
       onClose();
     } catch {
       setImportError(
@@ -67,11 +68,37 @@ export function BackupModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal title="Sao lưu / Khôi phục" onClose={onClose} size="md">
-      <p className="text-text-3 text-[11.5px] mb-3 leading-relaxed">
-        Dữ liệu đã tự lưu lên máy chủ. Dùng phần này khi muốn giữ một bản sao ngoài, hoặc
-        chuyển dữ liệu giữa các tài khoản.
-      </p>
+    <Sheet
+      title="Sao lưu / Khôi phục"
+      subtitle="Dữ liệu đã tự lưu; dùng phần này để giữ bản sao ngoài hoặc chuyển dữ liệu."
+      onClose={onClose}
+      dirty={mode === "import" && importText.trim().length > 0}
+      footer={
+        mode === "export" ? (
+          <>
+            <button onClick={downloadFile} className="btn-ghost flex-1 py-2.5 text-sm flex items-center justify-center gap-1.5">
+              <Download size={15} /> Tải file
+            </button>
+            <button onClick={copy} className="btn-primary flex-1 py-2.5 text-sm flex items-center justify-center gap-1.5">
+              <ClipboardCopy size={15} /> Copy toàn bộ
+            </button>
+          </>
+        ) : (
+          <>
+            <button onClick={onClose} className="btn-ghost flex-1 py-2.5 text-sm">
+              Huỷ
+            </button>
+            <button
+              onClick={doImport}
+              disabled={!importText.trim()}
+              className="btn-primary flex-1 py-2.5 text-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
+            >
+              <Upload size={15} /> Khôi phục
+            </button>
+          </>
+        )
+      }
+    >
       <div className="mb-3">
         <Segmented
           value={mode}
@@ -84,29 +111,13 @@ export function BackupModal({ onClose }: { onClose: () => void }) {
       </div>
 
       {mode === "export" ? (
-        <div className="space-y-2.5">
-          <textarea
-            readOnly
-            value={exportText}
-            onFocus={(e) => e.currentTarget.select()}
-            rows={7}
-            className="field w-full px-3 py-2.5 text-[10px] num"
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={copy}
-              className="btn-primary flex-1 py-2.5 text-sm flex items-center justify-center gap-1.5"
-            >
-              <ClipboardCopy size={15} /> {copied ? "Đã copy!" : "Copy toàn bộ"}
-            </button>
-            <button
-              onClick={downloadFile}
-              className="btn-ghost px-4 py-2.5 text-sm flex items-center gap-1.5"
-            >
-              <Download size={15} /> Tải file
-            </button>
-          </div>
-        </div>
+        <textarea
+          readOnly
+          value={exportText}
+          onFocus={(e) => e.currentTarget.select()}
+          rows={12}
+          className="field w-full px-3 py-2.5 text-[10px] num"
+        />
       ) : (
         <div className="space-y-2.5">
           <textarea
@@ -116,19 +127,15 @@ export function BackupModal({ onClose }: { onClose: () => void }) {
               setImportError("");
             }}
             placeholder="Dán dữ liệu đã sao lưu vào đây…"
-            rows={7}
+            rows={12}
             className="field w-full px-3 py-2.5 text-xs num"
           />
           {importError && <p className="text-bad text-[11.5px]">{importError}</p>}
-          <button
-            onClick={doImport}
-            disabled={!importText.trim()}
-            className="btn-primary w-full py-2.5 text-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
-          >
-            <Upload size={15} /> Khôi phục (ghi đè dữ liệu hiện tại)
-          </button>
+          <p className="text-text-3 text-[11px]">
+            ⚠️ Khôi phục sẽ <b>ghi đè</b> toàn bộ dữ liệu hiện tại.
+          </p>
         </div>
       )}
-    </Modal>
+    </Sheet>
   );
 }

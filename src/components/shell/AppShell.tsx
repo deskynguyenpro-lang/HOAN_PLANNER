@@ -21,9 +21,9 @@ import { DataErrorBanner } from "./DataErrorBanner";
 
 const NAV = [
   { href: "/tong-quan", label: "Tổng quan", icon: LayoutDashboard },
+  { href: "/ke-hoach", label: "Kế hoạch", icon: Target },
   { href: "/hom-nay", label: "Hôm nay", icon: CalendarCheck2 },
   { href: "/lich", label: "Lịch", icon: CalendarRange },
-  { href: "/muc-tieu", label: "Mục tiêu", icon: Target },
   { href: "/phan-tich", label: "Phân tích", icon: LineChart },
 ];
 

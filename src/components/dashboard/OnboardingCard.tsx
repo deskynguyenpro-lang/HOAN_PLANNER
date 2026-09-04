@@ -77,7 +77,7 @@ export function OnboardingCard() {
             <Wand2 size={15} /> Tải dữ liệu mẫu để xem thử
           </button>
           <Link
-            href="/muc-tieu"
+            href="/ke-hoach"
             className="btn-ghost px-4 py-2.5 text-[13px] flex items-center gap-2"
           >
             Tự tạo mục tiêu <ArrowRight size={14} />

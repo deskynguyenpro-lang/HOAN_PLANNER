@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { persistentCookieOptions } from "./cookies";
+import { isSupabaseConfigured } from "@/lib/data/local-store";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
@@ -11,6 +12,14 @@ const PUBLIC_PATHS = ["/login", "/auth"];
  * khỏi các trang trong app.
  */
 export async function updateSession(request: NextRequest) {
+  // Chưa cấu hình Supabase → chạy cục bộ, không chặn gì.
+  if (!isSupabaseConfigured()) {
+    if (request.nextUrl.pathname === "/login") {
+      return NextResponse.redirect(new URL("/tong-quan", request.url));
+    }
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(

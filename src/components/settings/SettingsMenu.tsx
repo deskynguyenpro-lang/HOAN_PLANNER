@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Settings2, ListChecks, Database, Wand2, LogOut } from "lucide-react";
-import { GoalManager } from "./GoalManager";
+import { Settings2, Database, Wand2, LogOut } from "lucide-react";
 import { BackupModal } from "./BackupModal";
 import { SeedConfirmModal } from "./SeedConfirmModal";
 
-type Panel = null | "goals" | "backup" | "seed";
+type Panel = null | "backup" | "seed";
 
 export function SettingsMenu({ align = "right" }: { align?: "left" | "right" }) {
   const [open, setOpen] = useState(false);
@@ -56,11 +55,10 @@ export function SettingsMenu({ align = "right" }: { align?: "left" | "right" }) 
             boxShadow: "0 24px 60px -20px rgba(0,0,0,0.65)",
           }}
         >
-          {item(<ListChecks size={15} />, "Mục tiêu hằng ngày", () => setPanel("goals"))}
           {item(<Database size={15} />, "Sao lưu / Khôi phục", () => setPanel("backup"))}
           {item(<Wand2 size={15} />, "Tải dữ liệu mẫu", () => setPanel("seed"))}
-          <div className="hair my-1.5" />
-          <form action="/auth/signout" method="post">
+          <div className="hair my-1.5 sm:hidden" />
+          <form action="/auth/signout" method="post" className="sm:hidden">
             <button
               type="submit"
               className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-lg text-[13px] font-medium text-text-2 hover:bg-chip hover:text-bad transition"
@@ -72,7 +70,6 @@ export function SettingsMenu({ align = "right" }: { align?: "left" | "right" }) 
         </div>
       )}
 
-      {panel === "goals" && <GoalManager onClose={() => setPanel(null)} />}
       {panel === "backup" && <BackupModal onClose={() => setPanel(null)} />}
       {panel === "seed" && <SeedConfirmModal onClose={() => setPanel(null)} />}
     </div>

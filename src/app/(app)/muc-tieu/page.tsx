@@ -1,10 +1,5 @@
-import { LoadedGate } from "@/components/ui/LoadedGate";
-import { ObjectivesView } from "@/components/objectives/ObjectivesView";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return (
-    <LoadedGate>
-      <ObjectivesView />
-    </LoadedGate>
-  );
+  redirect("/ke-hoach");
 }

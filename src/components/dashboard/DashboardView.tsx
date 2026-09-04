@@ -132,8 +132,10 @@ export function DashboardView() {
               {initial}
             </div>
             <div>
-              <div className="eyebrow mb-1">{fmtVN(new Date())}</div>
-              <h1 className="display text-[24px] lg:text-[28px]">
+              <div className="eyebrow mb-1" suppressHydrationWarning>
+                {fmtVN(new Date())}
+              </div>
+              <h1 className="display text-[24px] lg:text-[28px]" suppressHydrationWarning>
                 {greeting()}
                 {name ? `, ${name}` : ""}
               </h1>

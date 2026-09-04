@@ -1,17 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/data/local-store";
 import { AI_SYSTEM_PROMPT, buildAIUserPrompt } from "@/lib/domain/ai-summary";
 
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
 
 export async function POST(req: NextRequest) {
   // Chỉ người đã đăng nhập mới gọi được (tránh lộ / lạm dụng API key).
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Chưa đăng nhập." }, { status: 401 });
+  if (isSupabaseConfigured()) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Chưa đăng nhập." }, { status: 401 });
+    }
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;

@@ -18,6 +18,7 @@ import {
   rowToGoal,
   rowToObjective,
 } from "./mapping";
+import { isSupabaseConfigured, loadLocal, saveLocal } from "./local-store";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -29,6 +30,8 @@ interface StoreValue {
   saveState: SaveState;
   saveError: string;
   email: string;
+  /** true khi đang chạy chế độ cục bộ (chưa cấu hình Supabase). */
+  local: boolean;
   setGoals: (next: Goal[]) => void;
   setLogs: (next: Logs) => void;
   setObjectives: (next: Objective[]) => void;
@@ -41,7 +44,6 @@ const Ctx = StoreContext;
 
 const inList = (ids: string[]) => `(${ids.map((i) => `"${i}"`).join(",")})`;
 
-/** Diễn giải lỗi Supabase/PostgREST thành thông báo đọc được. */
 function describeError(e: unknown, fallback: string): string {
   if (e && typeof e === "object") {
     const o = e as { message?: string; details?: string; hint?: string; code?: string };
@@ -53,19 +55,26 @@ function describeError(e: unknown, fallback: string): string {
 }
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const supabase = useMemo(() => createClient(), []);
+  const local = useMemo(() => !isSupabaseConfigured(), []);
+  const supabase = useMemo(() => (local ? null : createClient()), [local]);
+
   const [goals, setGoalsState] = useState<Goal[]>([]);
   const [logs, setLogsState] = useState<Logs>({});
   const [objectives, setObjectivesState] = useState<Objective[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(local ? "Chế độ thử offline" : "");
 
   const userIdRef = useRef<string>("");
   const prevLogsRef = useRef<Logs>({});
   const queueRef = useRef<Promise<unknown>>(Promise.resolve());
   const loadRetriedRef = useRef(false);
+  const dataRef = useRef<AppData>({ goals: [], logs: {}, objectives: [] });
+
+  const syncRef = useCallback((g: Goal[], l: Logs, o: Objective[]) => {
+    dataRef.current = { goals: g, logs: l, objectives: o };
+  }, []);
 
   const runWrite = useCallback((fn: () => Promise<void>) => {
     setSaveState("saving");
@@ -74,14 +83,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       .then(() => setSaveState("saved"))
       .catch((e: unknown) => {
         console.error("Lưu thất bại", e);
-        setSaveError(describeError(e, "Không lưu được dữ liệu lên máy chủ"));
+        setSaveError(describeError(e, "Không lưu được dữ liệu"));
         setSaveState("error");
       });
   }, []);
 
+  // ─── Load ────────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
+    if (local) {
+      const d = loadLocal();
+      setGoalsState(d.goals);
+      setLogsState(d.logs);
+      setObjectivesState(d.objectives);
+      prevLogsRef.current = d.logs;
+      syncRef(d.goals, d.logs, d.objectives);
+      setLoaded(true);
+      return;
+    }
     try {
-      const { data: auth } = await supabase.auth.getUser();
+      const { data: auth } = await supabase!.auth.getUser();
       if (!auth.user) {
         setLoaded(true);
         return;
@@ -90,10 +110,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setEmail(auth.user.email || "");
 
       const [gRes, oRes, cRes, lRes] = await Promise.all([
-        supabase.from("goals").select("*"),
-        supabase.from("objectives").select("*"),
-        supabase.from("objective_checkins").select("*"),
-        supabase.from("day_logs").select("date, blocks"),
+        supabase!.from("goals").select("*"),
+        supabase!.from("objectives").select("*"),
+        supabase!.from("objective_checkins").select("*"),
+        supabase!.from("day_logs").select("date, blocks"),
       ]);
 
       const gRows = gRes.data ?? [];
@@ -101,14 +121,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const cRows = (cRes.data ?? []) as CheckinRow[];
       const lRows = lRes.data ?? [];
 
-      setGoalsState(gRows.map(rowToGoal));
-      setObjectivesState(oRows.map((r) => rowToObjective(r, cRows)));
+      const nextGoals = gRows.map(rowToGoal);
+      const nextObjectives = oRows.map((r) => rowToObjective(r, cRows));
       const nextLogs: Logs = {};
       lRows.forEach((r: { date: string; blocks: Logs[string]["blocks"] }) => {
         nextLogs[r.date] = { blocks: r.blocks || [] };
       });
+      setGoalsState(nextGoals);
+      setObjectivesState(nextObjectives);
       setLogsState(nextLogs);
       prevLogsRef.current = nextLogs;
+      syncRef(nextGoals, nextLogs, nextObjectives);
 
       const errs = [
         gRes.error && `goals: ${describeError(gRes.error, "")}`,
@@ -117,7 +140,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         lRes.error && `day_logs: ${describeError(lRes.error, "")}`,
       ].filter(Boolean);
       if (errs.length) {
-        // PGRST205 = PostgREST chưa nạp lại schema sau khi chạy DDL — thử lại 1 lần.
         const cacheStale = [gRes, oRes, cRes, lRes].some(
           (r) => r.error && (r.error as { code?: string }).code === "PGRST205",
         );
@@ -131,60 +153,68 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (e) {
       console.error("Tải dữ liệu thất bại", e);
-      setSaveError(
-        describeError(e, "Không kết nối được cơ sở dữ liệu."),
-      );
+      setSaveError(describeError(e, "Không kết nối được cơ sở dữ liệu."));
       setSaveState("error");
     } finally {
       setLoaded(true);
     }
-  }, [supabase]);
+  }, [local, supabase, syncRef]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  // ─── Local persistence helper ───────────────────────────────────────────
+  const persistLocal = useCallback(() => {
+    runWrite(async () => {
+      saveLocal(dataRef.current);
+    });
+  }, [runWrite]);
+
   // ─── Goals ───────────────────────────────────────────────────────────────
   const setGoals = useCallback(
     (next: Goal[]) => {
       setGoalsState(next);
+      syncRef(next, dataRef.current.logs, dataRef.current.objectives);
+      if (local) return persistLocal();
       const uid = userIdRef.current;
       runWrite(async () => {
         if (next.length) {
-          const { error } = await supabase
+          const { error } = await supabase!
             .from("goals")
             .upsert(next.map((g) => goalToRow(g, uid)), { onConflict: "id" });
           if (error) throw error;
         }
-        const del = supabase.from("goals").delete().eq("user_id", uid);
+        const del = supabase!.from("goals").delete().eq("user_id", uid);
         const { error: dErr } = next.length
           ? await del.not("id", "in", inList(next.map((g) => g.id)))
           : await del;
         if (dErr) throw dErr;
       });
     },
-    [runWrite, supabase],
+    [local, persistLocal, runWrite, supabase, syncRef],
   );
 
   // ─── Objectives + check-ins ─────────────────────────────────────────────
   const setObjectives = useCallback(
     (next: Objective[]) => {
       setObjectivesState(next);
+      syncRef(dataRef.current.goals, dataRef.current.logs, next);
+      if (local) return persistLocal();
       const uid = userIdRef.current;
       runWrite(async () => {
         if (next.length) {
-          const { error } = await supabase
+          const { error } = await supabase!
             .from("objectives")
             .upsert(next.map((o) => objectiveToRow(o, uid)), { onConflict: "id" });
           if (error) throw error;
         }
-        const delObj = supabase.from("objectives").delete().eq("user_id", uid);
+        const delObj = supabase!.from("objectives").delete().eq("user_id", uid);
         const { error: dErr } = next.length
           ? await delObj.not("id", "in", inList(next.map((o) => o.id)))
           : await delObj;
         if (dErr) throw dErr;
 
-        // check-ins: đồng bộ toàn bộ theo (objective_id, date)
         const rows: CheckinRow[] = [];
         next.forEach((o) =>
           (o.checkins || []).forEach((c) =>
@@ -192,24 +222,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           ),
         );
         if (rows.length) {
-          const { error } = await supabase
+          const { error } = await supabase!
             .from("objective_checkins")
             .upsert(rows, { onConflict: "objective_id,date" });
           if (error) throw error;
         }
         const keptObjIds = next.map((o) => o.id);
-        const delC = supabase.from("objective_checkins").delete().eq("user_id", uid);
+        const delC = supabase!.from("objective_checkins").delete().eq("user_id", uid);
         if (keptObjIds.length === 0) {
           const { error } = await delC;
           if (error) throw error;
         } else {
-          // xoá check-in của mục tiêu đã bị xoá
           const { error } = await delC.not("objective_id", "in", inList(keptObjIds));
           if (error) throw error;
-          // xoá check-in lẻ (date) không còn trong danh sách
           for (const o of next) {
             const dates = (o.checkins || []).map((c) => c.date);
-            const q = supabase
+            const q = supabase!
               .from("objective_checkins")
               .delete()
               .eq("objective_id", o.id);
@@ -221,16 +249,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       });
     },
-    [runWrite, supabase],
+    [local, persistLocal, runWrite, supabase, syncRef],
   );
 
   // ─── Day logs ──────────────────────────────────────────────────────────
   const setLogs = useCallback(
     (next: Logs) => {
       setLogsState(next);
-      const uid = userIdRef.current;
       const prev = prevLogsRef.current;
       prevLogsRef.current = next;
+      syncRef(dataRef.current.goals, next, dataRef.current.objectives);
+      if (local) return persistLocal();
+      const uid = userIdRef.current;
       runWrite(async () => {
         const changed: string[] = [];
         for (const k of Object.keys(next)) {
@@ -245,13 +275,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             blocks: (next[date]?.blocks || []).filter((b) => !b.virtual),
             updated_at: new Date().toISOString(),
           }));
-          const { error } = await supabase
+          const { error } = await supabase!
             .from("day_logs")
             .upsert(rows, { onConflict: "user_id,date" });
           if (error) throw error;
         }
         if (removed.length) {
-          const { error } = await supabase
+          const { error } = await supabase!
             .from("day_logs")
             .delete()
             .eq("user_id", uid)
@@ -260,7 +290,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       });
     },
-    [runWrite, supabase],
+    [local, persistLocal, runWrite, supabase, syncRef],
   );
 
   // ─── Thay toàn bộ (import / dữ liệu mẫu) ──────────────────────────────
@@ -270,15 +300,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setObjectivesState(data.objectives);
       setLogsState(data.logs);
       prevLogsRef.current = data.logs;
+      syncRef(data.goals, data.logs, data.objectives);
+      if (local) return persistLocal();
       const uid = userIdRef.current;
       runWrite(async () => {
-        await supabase.from("day_logs").delete().eq("user_id", uid);
-        await supabase.from("objective_checkins").delete().eq("user_id", uid);
-        await supabase.from("goals").delete().eq("user_id", uid);
-        await supabase.from("objectives").delete().eq("user_id", uid);
+        await supabase!.from("day_logs").delete().eq("user_id", uid);
+        await supabase!.from("objective_checkins").delete().eq("user_id", uid);
+        await supabase!.from("goals").delete().eq("user_id", uid);
+        await supabase!.from("objectives").delete().eq("user_id", uid);
 
         if (data.objectives.length) {
-          const { error } = await supabase
+          const { error } = await supabase!
             .from("objectives")
             .insert(data.objectives.map((o) => objectiveToRow(o, uid)));
           if (error) throw error;
@@ -289,12 +321,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             ),
           );
           if (cRows.length) {
-            const { error: ce } = await supabase.from("objective_checkins").insert(cRows);
+            const { error: ce } = await supabase!.from("objective_checkins").insert(cRows);
             if (ce) throw ce;
           }
         }
         if (data.goals.length) {
-          const { error } = await supabase
+          const { error } = await supabase!
             .from("goals")
             .insert(data.goals.map((g) => goalToRow(g, uid)));
           if (error) throw error;
@@ -305,12 +337,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           blocks: (l.blocks || []).filter((b) => !b.virtual),
         }));
         if (logRows.length) {
-          const { error } = await supabase.from("day_logs").insert(logRows);
+          const { error } = await supabase!.from("day_logs").insert(logRows);
           if (error) throw error;
         }
       });
     },
-    [runWrite, supabase],
+    [local, persistLocal, runWrite, supabase, syncRef],
   );
 
   const value: StoreValue = {
@@ -321,6 +353,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     saveState,
     saveError,
     email,
+    local,
     setGoals,
     setLogs,
     setObjectives,

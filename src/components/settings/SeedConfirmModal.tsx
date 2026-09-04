@@ -1,11 +1,13 @@
 "use client";
 
 import { Modal } from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/Toast";
 import { useStore } from "@/lib/data/store";
 import { buildSampleData } from "@/lib/domain/sample";
 
 export function SeedConfirmModal({ onClose }: { onClose: () => void }) {
   const { replaceAll } = useStore();
+  const { toast } = useToast();
   return (
     <Modal title="Tải dữ liệu mẫu?" onClose={onClose} size="xs">
       <p className="text-text-2 text-[12.5px] mb-4 leading-relaxed">
@@ -20,6 +22,7 @@ export function SeedConfirmModal({ onClose }: { onClose: () => void }) {
         <button
           onClick={() => {
             replaceAll(buildSampleData());
+            toast("Đã tải dữ liệu mẫu.");
             onClose();
           }}
           className="btn-primary flex-1 py-2.5 text-sm"
