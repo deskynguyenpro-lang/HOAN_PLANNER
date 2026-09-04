@@ -17,6 +17,7 @@ import {
 import { useStore } from "@/lib/data/store";
 import { ThemeToggle } from "./ThemeToggle";
 import { SettingsMenu } from "@/components/settings/SettingsMenu";
+import { DataErrorBanner } from "./DataErrorBanner";
 
 const NAV = [
   { href: "/tong-quan", label: "Tổng quan", icon: LayoutDashboard },
@@ -179,6 +180,7 @@ export function AppShell({
           key={pathname}
           className="page-enter mx-auto max-w-5xl px-4 lg:px-8 py-5 lg:py-8 pb-28 lg:pb-12"
         >
+          <DataErrorBanner />
           {children}
         </main>
       </div>

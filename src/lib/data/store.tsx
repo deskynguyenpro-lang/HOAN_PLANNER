@@ -41,6 +41,17 @@ const Ctx = StoreContext;
 
 const inList = (ids: string[]) => `(${ids.map((i) => `"${i}"`).join(",")})`;
 
+/** Diễn giải lỗi Supabase/PostgREST thành thông báo đọc được. */
+function describeError(e: unknown, fallback: string): string {
+  if (e && typeof e === "object") {
+    const o = e as { message?: string; details?: string; hint?: string; code?: string };
+    const parts = [o.message, o.details, o.hint].filter(Boolean);
+    const base = parts.join(" · ") || fallback;
+    return o.code ? `${base} (mã ${o.code})` : base;
+  }
+  return e instanceof Error ? e.message : fallback;
+}
+
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
   const [goals, setGoalsState] = useState<Goal[]>([]);
@@ -54,6 +65,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const userIdRef = useRef<string>("");
   const prevLogsRef = useRef<Logs>({});
   const queueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const loadRetriedRef = useRef(false);
 
   const runWrite = useCallback((fn: () => Promise<void>) => {
     setSaveState("saving");
@@ -62,7 +74,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       .then(() => setSaveState("saved"))
       .catch((e: unknown) => {
         console.error("Lưu thất bại", e);
-        setSaveError(e instanceof Error ? e.message : "Không lưu được dữ liệu lên máy chủ");
+        setSaveError(describeError(e, "Không lưu được dữ liệu lên máy chủ"));
         setSaveState("error");
       });
   }, []);
@@ -98,15 +110,29 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setLogsState(nextLogs);
       prevLogsRef.current = nextLogs;
 
-      const firstErr = gRes.error || oRes.error || cRes.error || lRes.error;
-      if (firstErr) {
-        setSaveError(firstErr.message);
+      const errs = [
+        gRes.error && `goals: ${describeError(gRes.error, "")}`,
+        oRes.error && `objectives: ${describeError(oRes.error, "")}`,
+        cRes.error && `checkins: ${describeError(cRes.error, "")}`,
+        lRes.error && `day_logs: ${describeError(lRes.error, "")}`,
+      ].filter(Boolean);
+      if (errs.length) {
+        // PGRST205 = PostgREST chưa nạp lại schema sau khi chạy DDL — thử lại 1 lần.
+        const cacheStale = [gRes, oRes, cRes, lRes].some(
+          (r) => r.error && (r.error as { code?: string }).code === "PGRST205",
+        );
+        if (cacheStale && !loadRetriedRef.current) {
+          loadRetriedRef.current = true;
+          await new Promise((r) => setTimeout(r, 2500));
+          return load();
+        }
+        setSaveError(`Không đọc được dữ liệu — ${errs.join(" | ")}`);
         setSaveState("error");
       }
     } catch (e) {
       console.error("Tải dữ liệu thất bại", e);
       setSaveError(
-        e instanceof Error ? e.message : "Không kết nối được cơ sở dữ liệu.",
+        describeError(e, "Không kết nối được cơ sở dữ liệu."),
       );
       setSaveState("error");
     } finally {
@@ -299,7 +325,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setLogs,
     setObjectives,
     replaceAll,
-    reload: load,
+    reload: async () => {
+      loadRetriedRef.current = false;
+      setSaveState("idle");
+      await load();
+    },
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
