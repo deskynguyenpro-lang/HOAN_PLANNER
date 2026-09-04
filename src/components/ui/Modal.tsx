@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 export function Modal({
@@ -14,7 +15,10 @@ export function Modal({
   children: ReactNode;
   size?: "xs" | "sm" | "md";
 }) {
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -27,10 +31,14 @@ export function Modal({
 
   const maxW = size === "xs" ? "max-w-xs" : size === "md" ? "max-w-md" : "max-w-sm";
 
-  return (
+  const node = (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto animate-fade-in"
-      style={{ background: "rgba(6,8,18,0.66)", backdropFilter: "blur(3px)" }}
+      className="fixed inset-0 z-[1000] overflow-y-auto animate-fade-in"
+      style={{
+        background: "rgba(4,6,14,0.82)",
+        backdropFilter: "blur(4px)",
+        WebkitBackdropFilter: "blur(4px)",
+      }}
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -42,7 +50,7 @@ export function Modal({
           style={{
             background: "var(--surface)",
             border: "1px solid var(--border)",
-            boxShadow: "var(--tw-shadow, 0 24px 60px -20px rgba(0,0,0,0.65))",
+            boxShadow: "0 30px 70px -20px rgba(0,0,0,0.7)",
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -61,4 +69,7 @@ export function Modal({
       </div>
     </div>
   );
+
+  if (!mounted) return null;
+  return createPortal(node, document.body);
 }
