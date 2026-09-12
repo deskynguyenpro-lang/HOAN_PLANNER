@@ -2,31 +2,32 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Plus, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { ProgressBar, PillarDot, Reveal } from "@/components/ui/bits";
+import { Reveal } from "@/components/ui/bits";
 import { useStore } from "@/lib/data/store";
-import { PILLARS } from "@/lib/domain/pillars";
 import { addDays, fmtHours, startOfWeek, toKey, fmtVN } from "@/lib/domain/dates";
-import { categoryTotals } from "@/lib/domain/stats";
 import { computeStreak } from "@/lib/domain/streak";
 import {
   computeWeeklyMetrics,
   computeDriftAlerts,
   trajectoryData,
+  pillarsWeekOverview,
 } from "@/lib/domain/weekly";
 import {
   fetchWeeklyReviews,
   saveWeeklyReview,
   type WeeklyReviewRow,
 } from "@/lib/data/weekly-reviews";
-import { getEffectiveBlocks } from "@/lib/domain/schedule";
+import { dayBlocks, getEffectiveBlocks } from "@/lib/domain/schedule";
 import { TrajectoryRibbon } from "./TrajectoryRibbon";
 import { DriftAlerts } from "./DriftAlerts";
 import { ScoreRing } from "./ScoreRing";
 import { OnboardingCard } from "./OnboardingCard";
 import { SpotlightCards } from "./SpotlightCards";
+import { PillarsOverview } from "./PillarsOverview";
 import { longestStreak } from "@/lib/domain/streak";
+import { AddBlockModal } from "@/components/today/AddBlockModal";
 
 function greeting() {
   const h = new Date().getHours();
@@ -37,8 +38,9 @@ function greeting() {
 }
 
 export function DashboardView() {
-  const { goals, logs, objectives, email } = useStore();
+  const { goals, logs, setLogs, objectives, email } = useStore();
   const [reviews, setReviews] = useState<WeeklyReviewRow[] | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const savedRef = useRef(false);
 
   const thisWeekStart = toKey(startOfWeek(new Date()));
@@ -59,11 +61,7 @@ export function DashboardView() {
   );
   const trajectory = useMemo(() => trajectoryData(goals, logs, 12), [goals, logs]);
 
-  const week7 = useMemo(
-    () => categoryTotals(goals, logs, addDays(new Date(), -6), new Date()),
-    [goals, logs],
-  );
-  const week7Total = Object.values(week7).reduce((a, b) => a + b, 0);
+  const pillarsWeek = useMemo(() => pillarsWeekOverview(goals, logs), [goals, logs]);
 
   // Tải danh sách tổng kết tuần đã lưu + tự lưu tuần vừa kết thúc (1 lần / phiên)
   useEffect(() => {
@@ -107,13 +105,37 @@ export function DashboardView() {
     .reduce((s, b) => s + b.duration, 0);
   const bestStreak = useMemo(() => longestStreak(goals, logs), [goals, logs]);
 
-  const pillarRows = PILLARS.map((p) => ({
-    ...p,
-    hours: week7[p.id] || 0,
-    pct: week7Total > 0 ? Math.round(((week7[p.id] || 0) / week7Total) * 100) : 0,
-  })).sort((a, b) => b.hours - a.hours);
-
   const initial = (name || email || "?").charAt(0).toUpperCase();
+
+  const addBlock = ({
+    goalId,
+    start,
+    duration,
+  }: {
+    goalId: string;
+    start: number;
+    duration: number;
+  }) => {
+    const todayKeyStr = toKey(new Date());
+    const blocks = dayBlocks(todayKeyStr, logs);
+    setLogs({
+      ...logs,
+      [todayKeyStr]: {
+        blocks: [
+          ...blocks,
+          {
+            id: `b_${Date.now()}`,
+            goalId,
+            start,
+            duration,
+            completed: false,
+            skipped: false,
+            reason: "",
+          },
+        ],
+      },
+    });
+  };
 
   return (
     <div className="space-y-5">
@@ -161,12 +183,22 @@ export function DashboardView() {
               </div>
             </div>
           </div>
-          <Link
-            href="/hom-nay"
-            className="btn-primary px-4 py-2.5 text-[13px] flex items-center gap-2 self-start"
-          >
-            Lên kế hoạch hôm nay <ArrowRight size={15} />
-          </Link>
+          <div className="flex items-center gap-2 self-start">
+            {!isEmpty && (
+              <button
+                onClick={() => setAddOpen(true)}
+                className="btn-ghost px-3.5 py-2.5 text-[13px] flex items-center gap-1.5"
+              >
+                <Plus size={15} /> Thêm công việc mới
+              </button>
+            )}
+            <Link
+              href="/hom-nay"
+              className="btn-primary px-4 py-2.5 text-[13px] flex items-center gap-2"
+            >
+              Lên kế hoạch hôm nay <ArrowRight size={15} />
+            </Link>
+          </div>
         </div>
       </Reveal>
 
@@ -202,98 +234,81 @@ export function DashboardView() {
         </Reveal>
       )}
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      {!isEmpty && (
         <Reveal delay={160}>
-          <Card className="h-full">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="headline text-[15px] flex items-center gap-1.5">
-                <Sparkles size={15} className="text-brand" /> Tổng kết tuần gần nhất
-              </h2>
-              <Link
-                href="/phan-tich?tab=tuan"
-                className="text-brand text-[12px] font-bold flex items-center gap-1"
-              >
-                Chi tiết <ArrowRight size={13} />
-              </Link>
-            </div>
+          <div>
+            <div className="eyebrow mb-2">4 trụ cột · tuần này</div>
+            <PillarsOverview data={pillarsWeek} />
+          </div>
+        </Reveal>
+      )}
 
-            {reviews === null ? (
-              <div className="h-24 rounded-xl" style={{ background: "var(--chip)" }} />
-            ) : latestReview ? (
-              <div className="flex gap-4 items-center">
-                <ScoreRing score={latestReview.metrics.score} />
-                <div className="min-w-0 flex-1">
-                  <div className="text-text-3 text-[11px] num mb-1">
-                    Tuần bắt đầu {latestReview.week_start}
-                  </div>
-                  <div className="text-text text-[12.5px] leading-relaxed">
-                    Bám kế hoạch{" "}
-                    <b>
-                      {latestReview.metrics.adherence === null
-                        ? "—"
-                        : `${latestReview.metrics.adherence}%`}
-                    </b>
-                    , hoàn thành{" "}
-                    <b>{fmtHours(latestReview.metrics.completedHours)}</b>
-                    {latestReview.metrics.deltaHoursPct !== 0 && (
-                      <>
-                        {" "}
-                        (
-                        {latestReview.metrics.deltaHoursPct >= 0 ? "+" : ""}
-                        {latestReview.metrics.deltaHoursPct}% so với tuần trước)
-                      </>
-                    )}
-                    .
-                  </div>
-                  {latestReview.ai_summary && (
-                    <div className="text-text-2 text-[11.5px] mt-2 line-clamp-3 leading-relaxed">
-                      {latestReview.ai_summary}
-                    </div>
-                  )}
+      <Reveal delay={200}>
+        <Card>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="headline text-[15px] flex items-center gap-1.5">
+              <Sparkles size={15} className="text-brand" /> Tổng kết tuần gần nhất
+            </h2>
+            <Link
+              href="/phan-tich?tab=tuan"
+              className="text-brand text-[12px] font-bold flex items-center gap-1"
+            >
+              Chi tiết <ArrowRight size={13} />
+            </Link>
+          </div>
+
+          {reviews === null ? (
+            <div className="h-24 rounded-xl" style={{ background: "var(--chip)" }} />
+          ) : latestReview ? (
+            <div className="flex gap-4 items-center">
+              <ScoreRing score={latestReview.metrics.score} />
+              <div className="min-w-0 flex-1">
+                <div className="text-text-3 text-[11px] num mb-1">
+                  Tuần bắt đầu {latestReview.week_start}
                 </div>
-              </div>
-            ) : (
-              <p className="text-text-3 text-[12.5px] leading-relaxed">
-                Chưa có tuần nào hoàn tất để tổng kết. Cứ bám lịch trình — cuối tuần app sẽ
-                tự chấm điểm và lưu lại ở đây.
-              </p>
-            )}
-          </Card>
-        </Reveal>
-
-        <Reveal delay={200}>
-          <Card className="h-full">
-            <h2 className="headline text-[15px] mb-1">Cân bằng 4 trụ cột · 7 ngày</h2>
-            <p className="text-text-3 text-[11.5px] mb-3">
-              Thời gian hoàn thành phân bổ giữa các trụ cột
-            </p>
-            {week7Total === 0 ? (
-              <p className="text-text-3 text-[12.5px]">
-                Chưa có buổi nào hoàn thành trong 7 ngày qua.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {pillarRows.map((p) => (
-                  <div key={p.id} className="flex items-center gap-3">
-                    <PillarDot id={p.id} size={9} />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-text text-[12.5px] font-semibold">
-                          {p.label}
-                        </span>
-                        <span className="text-text-2 text-[11.5px] font-bold num">
-                          {fmtHours(p.hours)} · {p.pct}%
-                        </span>
-                      </div>
-                      <ProgressBar pct={p.pct} height={7} color={p.color} />
-                    </div>
+                <div className="text-text text-[12.5px] leading-relaxed">
+                  Bám kế hoạch{" "}
+                  <b>
+                    {latestReview.metrics.adherence === null
+                      ? "—"
+                      : `${latestReview.metrics.adherence}%`}
+                  </b>
+                  , hoàn thành{" "}
+                  <b>{fmtHours(latestReview.metrics.completedHours)}</b>
+                  {latestReview.metrics.deltaHoursPct !== 0 && (
+                    <>
+                      {" "}
+                      (
+                      {latestReview.metrics.deltaHoursPct >= 0 ? "+" : ""}
+                      {latestReview.metrics.deltaHoursPct}% so với tuần trước)
+                    </>
+                  )}
+                  .
+                </div>
+                {latestReview.ai_summary && (
+                  <div className="text-text-2 text-[11.5px] mt-2 line-clamp-3 leading-relaxed">
+                    {latestReview.ai_summary}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </Card>
-        </Reveal>
-      </div>
+            </div>
+          ) : (
+            <p className="text-text-3 text-[12.5px] leading-relaxed">
+              Chưa có tuần nào hoàn tất để tổng kết. Cứ bám lịch trình — cuối tuần app sẽ tự
+              chấm điểm và lưu lại ở đây.
+            </p>
+          )}
+        </Card>
+      </Reveal>
+
+      {addOpen && (
+        <AddBlockModal
+          goals={goals}
+          defaultTime={`${String(Math.min(23, new Date().getHours() + 1)).padStart(2, "0")}:00`}
+          onAdd={addBlock}
+          onClose={() => setAddOpen(false)}
+        />
+      )}
     </div>
   );
 }

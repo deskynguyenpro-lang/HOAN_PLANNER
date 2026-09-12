@@ -10,10 +10,10 @@ export interface Pillar {
 
 /** 4 trụ cột cố định của kế hoạch phát triển bản thân. */
 export const PILLARS: Pillar[] = [
-  { id: "work", label: "Công việc", short: "CV", color: "var(--work)", hex: "#F2A93B" },
-  { id: "study", label: "Học tập", short: "HT", color: "var(--study)", hex: "#5B8DEF" },
-  { id: "health", label: "Sức khỏe", short: "SK", color: "var(--health)", hex: "#35C793" },
-  { id: "research", label: "Nghiên cứu", short: "NC", color: "var(--research)", hex: "#9B6EF3" },
+  { id: "work", label: "Công việc", short: "CV", color: "var(--work)", hex: "#3B82F6" },
+  { id: "study", label: "Học tập", short: "HT", color: "var(--study)", hex: "#10B981" },
+  { id: "health", label: "Sức khỏe", short: "SK", color: "var(--health)", hex: "#F43F5E" },
+  { id: "research", label: "Nghiên cứu", short: "NC", color: "var(--research)", hex: "#F59E0B" },
 ];
 
 export const PILLAR_IDS = PILLARS.map((p) => p.id);

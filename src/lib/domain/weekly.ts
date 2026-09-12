@@ -330,6 +330,46 @@ export function computeDriftAlerts(
   return alerts.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "bad" ? -1 : 1));
 }
 
+export interface PillarWeekOverview {
+  id: PillarId;
+  targetHours: number; // tổng giờ mục tiêu tuần này (theo lịch lặp lại đang áp dụng)
+  doneHours: number;
+  sessionsTotal: number; // số buổi đã lên lịch tuần này
+  sessionsDone: number;
+  pct: number; // % theo giờ so với mục tiêu tuần (0-100, có thể vượt 100)
+}
+
+/**
+ * Tổng quan 4 trụ cột cho TUẦN HIỆN TẠI (thứ 2 → chủ nhật): mục tiêu giờ/tuần,
+ * giờ đã hoàn thành, và số buổi đã xong/tổng số buổi — dùng cho lưới 4 thẻ
+ * trụ cột ở trang Tổng quan.
+ */
+export function pillarsWeekOverview(goals: Goal[], logs: Logs): PillarWeekOverview[] {
+  const weekStartKey = toKey(startOfWeek(new Date()));
+  const agg = weekAggregate(goals, logs, weekStartKey);
+
+  const targetByPillar: Record<string, number> = {};
+  goals
+    .filter((g) => !g.archived)
+    .forEach((g) => {
+      const sch = effectiveSchedule(g);
+      targetByPillar[g.category] = (targetByPillar[g.category] || 0) + g.target * sch.days.length;
+    });
+
+  return PILLARS.map((p) => {
+    const targetHours = targetByPillar[p.id] || 0;
+    const doneHours = agg.hoursByPillar[p.id] || 0;
+    return {
+      id: p.id,
+      targetHours,
+      doneHours,
+      sessionsTotal: agg.plannedByPillar[p.id] || 0,
+      sessionsDone: agg.doneByPillar[p.id] || 0,
+      pct: targetHours > 0 ? Math.round((doneHours / targetHours) * 100) : 0,
+    };
+  });
+}
+
 export function scoreLabel(score: number): { text: string; tone: "good" | "warn" | "bad" } {
   if (score >= 80) return { text: "Xuất sắc", tone: "good" };
   if (score >= 65) return { text: "Tốt", tone: "good" };

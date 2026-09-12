@@ -24,13 +24,13 @@
   --brand-dim: rgba(255, 106, 90, 0.16);
   --brand-ink: #ffffff;
 
-  --work: #f6ab3c;
-  --study: #6293f4;
-  --health: #35cf98;
-  --research: #a179f6;
+  --work: #3b82f6;
+  --study: #10b981;
+  --health: #f43f5e;
+  --research: #f59e0b;
 
-  --good: #35cf98;
-  --warn: #f6ab3c;
+  --good: #14b8a6;
+  --warn: #f97316;
   --bad: #ff6a5a;
 
   --ring: rgba(255, 106, 90, 0.6);
@@ -62,13 +62,13 @@
   --brand-dim: rgba(240, 80, 59, 0.1);
   --brand-ink: #ffffff;
 
-  --work: #cf8318;
-  --study: #345fd4;
-  --health: #0fa274;
-  --research: #7248dc;
+  --work: #2563eb;
+  --study: #059669;
+  --health: #e11d48;
+  --research: #b45309;
 
-  --good: #0fa274;
-  --warn: #cf8318;
+  --good: #0d9488;
+  --warn: #c2410c;
   --bad: #f0503b;
 
   --ring: rgba(240, 80, 59, 0.4);
