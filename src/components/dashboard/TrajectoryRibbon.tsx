@@ -38,7 +38,7 @@ export function TrajectoryRibbon({ rows }: { rows: Row[] }) {
   const hasData = rows.some((r) => r.total > 0);
 
   return (
-    <div className="card p-4 lg:p-5 overflow-hidden">
+    <div className="card card-glass p-4 lg:p-5 overflow-hidden h-full">
       <div className="flex items-start justify-between mb-3 gap-3">
         <div>
           <div className="eyebrow mb-1">Dải quỹ đạo · 12 tuần</div>

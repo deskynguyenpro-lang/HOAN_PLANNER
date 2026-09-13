@@ -182,6 +182,55 @@ body::before {
     box-shadow: var(--pop-shadow), var(--card-highlight);
   }
 
+  /* Kính mờ (glassmorphism) — dùng cho các ô Bento trên nền có quầng sáng */
+  .card-glass {
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid color-mix(in srgb, var(--border-strong) 55%, transparent);
+  }
+
+  /* Viền gradient mảnh chỉ hiện khi hover — kỹ thuật mask-composite */
+  .bento-hover {
+    position: relative;
+    isolation: isolate;
+  }
+  .bento-hover::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, var(--brand), var(--study), var(--research));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .bento-hover:hover::before {
+    opacity: 1;
+  }
+
+  /* Quầng sáng dịu quanh thẻ, thay cho viền cứng — dùng cho cảnh báo */
+  .glow-good {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--good) 32%, var(--border)),
+      0 10px 34px -12px color-mix(in srgb, var(--good) 50%, transparent);
+  }
+  .glow-warn {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--warn) 32%, var(--border)),
+      0 10px 34px -12px color-mix(in srgb, var(--warn) 50%, transparent);
+  }
+  .glow-bad {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--bad) 32%, var(--border)),
+      0 10px 34px -12px color-mix(in srgb, var(--bad) 50%, transparent);
+  }
+
   .hair {
     height: 1px;
     background: var(--border);

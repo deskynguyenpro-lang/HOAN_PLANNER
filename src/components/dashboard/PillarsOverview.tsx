@@ -1,7 +1,6 @@
 "use client";
 
 import { Briefcase, BookOpen, HeartPulse, FlaskConical, type LucideIcon } from "lucide-react";
-import { Card } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/bits";
 import { PILLARS } from "@/lib/domain/pillars";
 import { fmtHours } from "@/lib/domain/dates";
@@ -14,7 +13,7 @@ const ICON: Record<string, LucideIcon> = {
   research: FlaskConical,
 };
 
-/** Lưới 4 thẻ trụ cột: icon, mục tiêu tuần, thanh tiến độ, số buổi đã xong/tổng. */
+/** Lưới Bento 4 trụ cột: icon trong viên màu, số % lớn đậm, thanh tiến độ, số buổi. */
 export function PillarsOverview({ data }: { data: PillarWeekOverview[] }) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -23,46 +22,48 @@ export function PillarsOverview({ data }: { data: PillarWeekOverview[] }) {
         const Icon = ICON[d.id];
         const hasTarget = d.targetHours > 0;
         return (
-          <Card key={d.id} className="card-hover p-4" style={{ borderRadius: 16 }}>
-            <div className="flex items-center gap-2 mb-3">
+          <div
+            key={d.id}
+            className="card card-glass card-hover bento-hover relative overflow-hidden p-4"
+            style={{ borderRadius: 18 }}
+          >
+            <div className="flex items-center gap-2 mb-4">
               <span
                 className="rounded-lg flex items-center justify-center flex-shrink-0"
                 style={{
-                  width: 28,
-                  height: 28,
-                  background: `color-mix(in srgb, ${p.color} 16%, transparent)`,
+                  width: 30,
+                  height: 30,
+                  background: `color-mix(in srgb, ${p.color} 15%, transparent)`,
                 }}
               >
-                <Icon size={14} strokeWidth={2.3} style={{ color: p.color }} />
+                <Icon size={15} strokeWidth={2.3} style={{ color: p.color }} />
               </span>
-              <span className="text-text text-[13px] font-bold truncate">{p.label}</span>
+              <span className="text-text-2 text-[12px] font-bold truncate">{p.label}</span>
             </div>
 
             {hasTarget ? (
               <>
-                <div className="flex items-baseline justify-between mb-1.5">
-                  <span className="num text-[11.5px] text-text-2">
-                    {fmtHours(d.doneHours)}{" "}
-                    <span className="text-text-3">/ {fmtHours(d.targetHours)}</span>
-                  </span>
-                  <span
-                    className="num text-[12px] font-bold"
-                    style={{ color: p.color }}
-                  >
-                    {d.pct}%
-                  </span>
+                <div className="display text-[32px] leading-none num mb-1" style={{ color: p.color }}>
+                  {d.pct}
+                  <span className="text-[16px] text-text-3">%</span>
                 </div>
-                <ProgressBar pct={d.pct} color={p.color} height={7} />
-                <div className="text-text-3 text-[11px] mt-2 num">
+                <div className="num text-[11px] text-text-3 mb-3">
+                  {fmtHours(d.doneHours)} / {fmtHours(d.targetHours)} mục tiêu tuần
+                </div>
+                <ProgressBar pct={d.pct} color={p.color} height={6} />
+                <div className="text-text-3 text-[11px] mt-2.5 num">
                   {d.sessionsDone}/{d.sessionsTotal} buổi tuần này
                 </div>
               </>
             ) : (
-              <p className="text-text-3 text-[11.5px] leading-relaxed">
-                Chưa có mục tiêu hằng ngày nào cho trụ cột này.
-              </p>
+              <>
+                <div className="display text-[32px] leading-none num mb-1 text-text-3">—</div>
+                <p className="text-text-3 text-[11.5px] leading-relaxed">
+                  Chưa có mục tiêu hằng ngày.
+                </p>
+              </>
             )}
-          </Card>
+          </div>
         );
       })}
     </div>

@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Plus, Sparkles } from "lucide-react";
+import { ArrowRight, Plus, Sparkles, ShieldAlert } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Reveal } from "@/components/ui/bits";
 import { useStore } from "@/lib/data/store";
 import { addDays, fmtHours, startOfWeek, toKey, fmtVN } from "@/lib/domain/dates";
-import { computeStreak } from "@/lib/domain/streak";
+import { computeStreak, longestStreak } from "@/lib/domain/streak";
 import {
   computeWeeklyMetrics,
   computeDriftAlerts,
@@ -24,9 +24,10 @@ import { TrajectoryRibbon } from "./TrajectoryRibbon";
 import { DriftAlerts } from "./DriftAlerts";
 import { ScoreRing } from "./ScoreRing";
 import { OnboardingCard } from "./OnboardingCard";
-import { SpotlightCards } from "./SpotlightCards";
 import { PillarsOverview } from "./PillarsOverview";
-import { longestStreak } from "@/lib/domain/streak";
+import { StreakTile } from "./StreakTile";
+import { AiAdvisorTile } from "./AiAdvisorTile";
+import { TodayQuickTimeline } from "./TodayQuickTimeline";
 import { AddBlockModal } from "@/components/today/AddBlockModal";
 
 function greeting() {
@@ -41,12 +42,14 @@ export function DashboardView() {
   const { goals, logs, setLogs, objectives, email } = useStore();
   const [reviews, setReviews] = useState<WeeklyReviewRow[] | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [showFab, setShowFab] = useState(false);
   const savedRef = useRef(false);
 
   const thisWeekStart = toKey(startOfWeek(new Date()));
   const lastWeekStart = toKey(addDays(startOfWeek(new Date()), -7));
 
   const streak = useMemo(() => computeStreak(goals, logs), [goals, logs]);
+  const bestStreak = useMemo(() => longestStreak(goals, logs), [goals, logs]);
   const wk = useMemo(
     () => computeWeeklyMetrics(goals, logs, thisWeekStart),
     [goals, logs, thisWeekStart],
@@ -60,7 +63,6 @@ export function DashboardView() {
     [goals, logs, objectives],
   );
   const trajectory = useMemo(() => trajectoryData(goals, logs, 12), [goals, logs]);
-
   const pillarsWeek = useMemo(() => pillarsWeekOverview(goals, logs), [goals, logs]);
 
   // Tải danh sách tổng kết tuần đã lưu + tự lưu tuần vừa kết thúc (1 lần / phiên)
@@ -72,8 +74,7 @@ export function DashboardView() {
         if (!alive) return;
         setReviews(rows);
         const hasLast = rows.some((r) => r.week_start === lastWeekStart);
-        const lastHadData =
-          lastWk.completedHours > 0 || lastWk.adherence !== null;
+        const lastHadData = lastWk.completedHours > 0 || lastWk.adherence !== null;
         if (!hasLast && lastHadData && !savedRef.current) {
           savedRef.current = true;
           await saveWeeklyReview(lastWeekStart, lastWk);
@@ -100,10 +101,6 @@ export function DashboardView() {
     [goals, logs],
   );
   const todayDone = todayPlanned.filter((b) => b.completed).length;
-  const todayHours = todayPlanned
-    .filter((b) => b.completed)
-    .reduce((s, b) => s + b.duration, 0);
-  const bestStreak = useMemo(() => longestStreak(goals, logs), [goals, logs]);
 
   const initial = (name || email || "?").charAt(0).toUpperCase();
 
@@ -137,8 +134,29 @@ export function DashboardView() {
     });
   };
 
+  // Cmd/Ctrl+K — mở nhanh "Thêm công việc" từ bất cứ đâu trên Tổng quan.
+  useEffect(() => {
+    if (isEmpty) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setAddOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isEmpty]);
+
+  // Nút "+" nổi chỉ hiện sau khi cuộn qua khỏi phần đầu trang — tránh đè lên
+  // đường link trong thẻ "Gợi ý hôm nay" ở ngay phía trên khi mới vào trang.
+  useEffect(() => {
+    const onScroll = () => setShowFab(window.scrollY > 260);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-16">
       <Reveal>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-start gap-3.5">
@@ -189,7 +207,13 @@ export function DashboardView() {
                 onClick={() => setAddOpen(true)}
                 className="btn-ghost px-3.5 py-2.5 text-[13px] flex items-center gap-1.5"
               >
-                <Plus size={15} /> Thêm công việc mới
+                <Plus size={15} /> Thêm công việc
+                <kbd
+                  className="hidden sm:inline text-[10px] font-mono px-1.5 py-0.5 rounded"
+                  style={{ background: "var(--surface-3)", color: "var(--text-3)" }}
+                >
+                  ⌘K
+                </kbd>
               </button>
             )}
             <Link
@@ -207,44 +231,47 @@ export function DashboardView() {
           <OnboardingCard />
         </Reveal>
       ) : (
-        <Reveal delay={40}>
-          <SpotlightCards
-            todayDone={todayDone}
-            todayTotal={todayPlanned.length}
-            todayHours={todayHours}
-            weekScore={wk.score}
-            adherence={wk.adherence}
-            deltaHoursPct={wk.deltaHoursPct}
-            streak={streak}
-            bestStreak={bestStreak}
-          />
-        </Reveal>
+        <>
+          {/* ─── Bento hàng 1: quỹ đạo (2/3) + streak & gợi ý (1/3) ─────── */}
+          <Reveal delay={40}>
+            <div className="grid lg:grid-cols-3 gap-4 items-stretch">
+              <div className="lg:col-span-2">
+                <TrajectoryRibbon rows={trajectory} />
+              </div>
+              <div className="flex flex-col gap-3">
+                <StreakTile streak={streak} best={bestStreak} />
+                <AiAdvisorTile alerts={alerts} score={wk.score} />
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ─── Bento hàng 2: việc tiếp theo (1/2) + cảnh báo (1/2) ────── */}
+          <Reveal delay={80}>
+            <div className="grid lg:grid-cols-2 gap-4 items-stretch">
+              <TodayQuickTimeline />
+              <div className="card card-glass p-4 lg:p-5 h-full flex flex-col">
+                <h2 className="headline text-[14.5px] flex items-center gap-1.5 mb-3.5">
+                  <ShieldAlert size={15} className="text-brand" /> Cảnh báo lệch hướng
+                </h2>
+                <div className="flex-1">
+                  <DriftAlerts alerts={alerts} />
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ─── Bento hàng 3: 4 trụ cột ─────────────────────────────────── */}
+          <Reveal delay={120}>
+            <div>
+              <div className="eyebrow mb-2">4 trụ cột · tuần này</div>
+              <PillarsOverview data={pillarsWeek} />
+            </div>
+          </Reveal>
+        </>
       )}
 
-      <Reveal delay={80}>
-        <TrajectoryRibbon rows={trajectory} />
-      </Reveal>
-
-      {!isEmpty && (
-        <Reveal delay={120}>
-          <div>
-            <div className="eyebrow mb-2">Cảnh báo lệch hướng</div>
-            <DriftAlerts alerts={alerts} />
-          </div>
-        </Reveal>
-      )}
-
-      {!isEmpty && (
-        <Reveal delay={160}>
-          <div>
-            <div className="eyebrow mb-2">4 trụ cột · tuần này</div>
-            <PillarsOverview data={pillarsWeek} />
-          </div>
-        </Reveal>
-      )}
-
-      <Reveal delay={200}>
-        <Card>
+      <Reveal delay={160}>
+        <Card className="card-glass">
           <div className="flex items-center justify-between mb-3">
             <h2 className="headline text-[15px] flex items-center gap-1.5">
               <Sparkles size={15} className="text-brand" /> Tổng kết tuần gần nhất
@@ -300,6 +327,26 @@ export function DashboardView() {
           )}
         </Card>
       </Reveal>
+
+      {!isEmpty && (
+        <button
+          onClick={() => setAddOpen(true)}
+          className="fixed z-40 bottom-6 right-6 lg:bottom-8 lg:right-8 rounded-full flex items-center justify-center text-white transition-all duration-200"
+          style={{
+            width: 56,
+            height: 56,
+            background: "linear-gradient(145deg, var(--brand-2), var(--brand))",
+            boxShadow: "0 16px 34px -10px color-mix(in srgb, var(--brand) 75%, transparent)",
+            opacity: showFab ? 1 : 0,
+            transform: showFab ? "scale(1)" : "scale(0.7)",
+            pointerEvents: showFab ? "auto" : "none",
+          }}
+          aria-label="Thêm công việc mới"
+          title="Thêm công việc mới (⌘K)"
+        >
+          <Plus size={24} />
+        </button>
+      )}
 
       {addOpen && (
         <AddBlockModal

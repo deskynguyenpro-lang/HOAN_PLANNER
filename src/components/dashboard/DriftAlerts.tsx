@@ -6,10 +6,7 @@ import type { DriftAlert } from "@/lib/domain/types";
 export function DriftAlerts({ alerts }: { alerts: DriftAlert[] }) {
   if (alerts.length === 0) {
     return (
-      <div
-        className="card p-4 flex items-center gap-3"
-        style={{ borderColor: "color-mix(in srgb, var(--good) 35%, var(--border))" }}
-      >
+      <div className="card card-glass glow-good p-4 flex items-center gap-3">
         <div
           className="rounded-xl flex items-center justify-center flex-shrink-0"
           style={{
@@ -41,8 +38,7 @@ export function DriftAlerts({ alerts }: { alerts: DriftAlert[] }) {
         return (
           <div
             key={a.id}
-            className="card p-4 flex gap-3"
-            style={{ borderColor: `color-mix(in srgb, ${color} 40%, var(--border))` }}
+            className={`card card-glass p-4 flex gap-3 ${isBad ? "glow-bad" : "glow-warn"}`}
           >
             <div
               className="rounded-xl flex items-center justify-center flex-shrink-0"
