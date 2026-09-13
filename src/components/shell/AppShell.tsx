@@ -13,6 +13,7 @@ import {
   CalendarRange,
   Target,
   LineChart,
+  Sparkles,
 } from "lucide-react";
 import { useStore } from "@/lib/data/store";
 import { ThemeToggle } from "./ThemeToggle";
@@ -123,6 +124,21 @@ export function AppShell({
           })}
         </nav>
 
+        <div className="px-3">
+          <Link
+            href="/dinh-huong"
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12.5px] font-semibold transition-colors"
+            style={{
+              background: isActive("/dinh-huong")
+                ? "var(--brand-dim)"
+                : "color-mix(in srgb, var(--research) 10%, transparent)",
+              color: isActive("/dinh-huong") ? "var(--brand)" : "var(--research)",
+            }}
+          >
+            <Sparkles size={15} /> Định hướng &amp; ưu tiên
+          </Link>
+        </div>
+
         <div className="px-3 py-4 border-t space-y-2" style={{ borderColor: "var(--border)" }}>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -171,6 +187,18 @@ export function AppShell({
           </div>
           <div className="flex items-center gap-1.5">
             <SaveStatus />
+            <Link
+              href="/dinh-huong"
+              aria-label="Định hướng & ưu tiên"
+              className="flex items-center justify-center rounded-lg"
+              style={{
+                width: 30,
+                height: 30,
+                color: isActive("/dinh-huong") ? "var(--brand)" : "var(--text-2)",
+              }}
+            >
+              <Sparkles size={16} />
+            </Link>
             <ThemeToggle compact />
             <SettingsMenu align="right" />
           </div>

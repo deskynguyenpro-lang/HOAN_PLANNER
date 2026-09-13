@@ -27,6 +27,7 @@ import { OnboardingCard } from "./OnboardingCard";
 import { PillarsOverview } from "./PillarsOverview";
 import { StreakTile } from "./StreakTile";
 import { AiAdvisorTile } from "./AiAdvisorTile";
+import { IdentityWeightTile } from "./IdentityWeightTile";
 import { TodayQuickTimeline } from "./TodayQuickTimeline";
 import { AddBlockModal } from "@/components/today/AddBlockModal";
 
@@ -258,6 +259,11 @@ export function DashboardView() {
                 </div>
               </div>
             </div>
+          </Reveal>
+
+          {/* ─── Bento hàng 2b: định hướng & trọng số ưu tiên ───────────── */}
+          <Reveal delay={100}>
+            <IdentityWeightTile />
           </Reveal>
 
           {/* ─── Bento hàng 3: 4 trụ cột ─────────────────────────────────── */}

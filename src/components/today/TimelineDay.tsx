@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, X, Trash2, Plus, Repeat } from "lucide-react";
+import { Check, X, Trash2, Plus, Repeat, Zap } from "lucide-react";
 import { pillarOf } from "@/lib/domain/pillars";
 import { decToLabel, fmtHours, pad } from "@/lib/domain/dates";
 import {
@@ -10,6 +10,8 @@ import {
   materializeAndUpdate,
 } from "@/lib/domain/schedule";
 import { useStore } from "@/lib/data/store";
+import { fetchIdentity } from "@/lib/data/identity-store";
+import { isCoreFocusGoal, type IdentityProfile } from "@/lib/domain/identity";
 import { ReasonModal } from "./ReasonModal";
 
 const HOUR_START = 5;
@@ -26,6 +28,13 @@ export function TimelineDay({
   const { goals, logs, setLogs } = useStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [reasonFor, setReasonFor] = useState<string | null>(null);
+  const [identity, setIdentity] = useState<IdentityProfile | null>(null);
+
+  useEffect(() => {
+    fetchIdentity()
+      .then(setIdentity)
+      .catch(() => setIdentity(null));
+  }, []);
 
   const blocks = getEffectiveBlocks(dateKey, goals, logs).filter((b) => !b.hidden);
   const goalMap = Object.fromEntries(goals.map((g) => [g.id, g]));
@@ -102,6 +111,8 @@ export function TimelineDay({
             const top = (b.start - HOUR_START) * ROW_H;
             const height = Math.max(32, b.duration * ROW_H - 4);
             const skipped = b.skipped;
+            const isCore = identity ? isCoreFocusGoal(g, identity) : false;
+            const sprintMuted = identity?.focusMode === "sprint" && !isCore && !b.completed;
             const GAP = 5;
             const leftBase = 48;
             const rightBase = 8;
@@ -112,7 +123,7 @@ export function TimelineDay({
             return (
               <div
                 key={b.id}
-                className="absolute rounded-lg px-2 py-1 flex items-center justify-between gap-1"
+                className="absolute rounded-lg px-2 py-1 flex items-center justify-between gap-1 transition-opacity"
                 style={{
                   left,
                   width,
@@ -125,9 +136,14 @@ export function TimelineDay({
                       : "color-mix(in srgb, " + p.color + " 16%, var(--surface))",
                   border: skipped
                     ? "1.5px dashed var(--text-3)"
-                    : "1px solid color-mix(in srgb, " + p.color + " 40%, transparent)",
-                  opacity: skipped ? 0.7 : 1,
-                  zIndex: 1,
+                    : isCore
+                      ? `1.5px solid ${p.color}`
+                      : "1px solid color-mix(in srgb, " + p.color + " 40%, transparent)",
+                  boxShadow: isCore
+                    ? `0 0 0 1px color-mix(in srgb, ${p.color} 35%, transparent), 0 0 14px -3px color-mix(in srgb, ${p.color} 75%, transparent)`
+                    : "none",
+                  opacity: skipped ? 0.7 : sprintMuted ? 0.38 : 1,
+                  zIndex: isCore ? 2 : 1,
                 }}
               >
                 <div className="min-w-0">
@@ -137,6 +153,16 @@ export function TimelineDay({
                         size={9}
                         style={{
                           color: b.completed ? "rgba(255,255,255,0.85)" : p.color,
+                          flexShrink: 0,
+                        }}
+                      />
+                    )}
+                    {isCore && (
+                      <Zap
+                        size={9}
+                        fill={b.completed ? "#fff" : p.color}
+                        style={{
+                          color: b.completed ? "#fff" : p.color,
                           flexShrink: 0,
                         }}
                       />
