@@ -12,6 +12,7 @@ import {
 import { useStore } from "@/lib/data/store";
 import { fetchIdentity } from "@/lib/data/identity-store";
 import { isCoreFocusGoal, type IdentityProfile } from "@/lib/domain/identity";
+import { ENERGY_META, deferSeverity } from "@/lib/domain/energy";
 import { ReasonModal } from "./ReasonModal";
 
 const HOUR_START = 5;
@@ -113,6 +114,7 @@ export function TimelineDay({
             const skipped = b.skipped;
             const isCore = identity ? isCoreFocusGoal(g, identity) : false;
             const sprintMuted = identity?.focusMode === "sprint" && !isCore && !b.completed;
+            const defSev = deferSeverity(b.deferCount);
             const GAP = 5;
             const leftBase = 48;
             const rightBase = 8;
@@ -133,12 +135,16 @@ export function TimelineDay({
                     ? p.color
                     : skipped
                       ? "var(--surface)"
-                      : "color-mix(in srgb, " + p.color + " 16%, var(--surface))",
+                      : b.isBufferBlock
+                        ? `repeating-linear-gradient(135deg, color-mix(in srgb, var(--warn) 22%, var(--surface)) 0px, color-mix(in srgb, var(--warn) 22%, var(--surface)) 6px, color-mix(in srgb, var(--warn) 8%, var(--surface)) 6px, color-mix(in srgb, var(--warn) 8%, var(--surface)) 12px)`
+                        : "color-mix(in srgb, " + p.color + " 16%, var(--surface))",
                   border: skipped
                     ? "1.5px dashed var(--text-3)"
-                    : isCore
-                      ? `1.5px solid ${p.color}`
-                      : "1px solid color-mix(in srgb, " + p.color + " 40%, transparent)",
+                    : b.isBufferBlock
+                      ? "1.5px dashed var(--warn)"
+                      : isCore
+                        ? `1.5px solid ${p.color}`
+                        : "1px solid color-mix(in srgb, " + p.color + " 40%, transparent)",
                   boxShadow: isCore
                     ? `0 0 0 1px color-mix(in srgb, ${p.color} 35%, transparent), 0 0 14px -3px color-mix(in srgb, ${p.color} 75%, transparent)`
                     : "none",
@@ -167,6 +173,13 @@ export function TimelineDay({
                         }}
                       />
                     )}
+                    <span
+                      aria-hidden
+                      style={{ fontSize: 9, lineHeight: 1, flexShrink: 0 }}
+                      title={ENERGY_META[b.energyLevel].label}
+                    >
+                      {ENERGY_META[b.energyLevel].emoji}
+                    </span>
                     <div
                       className="truncate"
                       style={{
@@ -242,6 +255,30 @@ export function TimelineDay({
                   >
                     <X size={12} />
                   </button>
+                )}
+
+                {defSev !== "none" && (
+                  <span
+                    className="absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full font-bold"
+                    style={{
+                      minWidth: 15,
+                      height: 15,
+                      padding: "0 3px",
+                      fontSize: 9,
+                      color: "#fff",
+                      background: "var(--bad)",
+                      boxShadow: `0 0 0 2px var(--surface)${
+                        defSev === "critical" ? ", 0 0 8px -1px var(--bad)" : ""
+                      }`,
+                    }}
+                    title={
+                      defSev === "critical"
+                        ? `Hoãn ${b.deferCount}+ lần — cân nhắc chia nhỏ task`
+                        : `Hoãn ${b.deferCount} lần`
+                    }
+                  >
+                    {defSev === "critical" ? "⚠️" : b.deferCount}
+                  </span>
                 )}
               </div>
             );

@@ -20,6 +20,7 @@ import {
   type WeeklyReviewRow,
 } from "@/lib/data/weekly-reviews";
 import { dayBlocks, getEffectiveBlocks } from "@/lib/domain/schedule";
+import type { EnergyLevel } from "@/lib/domain/types";
 import { TrajectoryRibbon } from "./TrajectoryRibbon";
 import { DriftAlerts } from "./DriftAlerts";
 import { ScoreRing } from "./ScoreRing";
@@ -109,10 +110,14 @@ export function DashboardView() {
     goalId,
     start,
     duration,
+    energyLevel,
+    isBufferBlock,
   }: {
     goalId: string;
     start: number;
     duration: number;
+    energyLevel: EnergyLevel;
+    isBufferBlock: boolean;
   }) => {
     const todayKeyStr = toKey(new Date());
     const blocks = dayBlocks(todayKeyStr, logs);
@@ -129,9 +134,9 @@ export function DashboardView() {
             completed: false,
             skipped: false,
             reason: "",
-            energyLevel: goals.find((g) => g.id === goalId)?.energyLevel || "MEDIUM",
+            energyLevel,
             deferCount: 0,
-            isBufferBlock: false,
+            isBufferBlock,
           },
         ],
       },

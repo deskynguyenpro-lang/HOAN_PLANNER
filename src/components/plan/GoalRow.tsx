@@ -1,7 +1,7 @@
 "use client";
 
 import { Pencil, Trash2, Repeat } from "lucide-react";
-import { PillarDot } from "@/components/ui/bits";
+import { PillarDot, EnergyBadge } from "@/components/ui/bits";
 import { pillarOf } from "@/lib/domain/pillars";
 import { decToLabel, fmtHours, fmtShort, parseKey } from "@/lib/domain/dates";
 import { effectiveSchedule } from "@/lib/domain/schedule";
@@ -46,7 +46,10 @@ export function GoalRow({
       <div className="flex items-center gap-2.5 min-w-0">
         <PillarDot id={goal.category} size={9} />
         <div className="min-w-0">
-          <div className="text-text text-[13.5px] font-semibold truncate">{goal.name}</div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="text-text text-[13.5px] font-semibold truncate">{goal.name}</div>
+            <EnergyBadge level={goal.energyLevel} compact />
+          </div>
           <div className="text-[11.5px] font-semibold" style={{ color: p.color }}>
             {p.label} · {fmtHours(goal.target)}/ngày
             {objective ? ` · hướng tới "${objective.name}"` : ""}

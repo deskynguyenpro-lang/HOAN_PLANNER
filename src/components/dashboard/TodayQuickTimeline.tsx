@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Check, CalendarClock, ArrowRight } from "lucide-react";
-import { EmptyState } from "@/components/ui/bits";
+import { EmptyState, EnergyBadge, DeferBadge } from "@/components/ui/bits";
 import { useStore } from "@/lib/data/store";
 import { pillarOf } from "@/lib/domain/pillars";
 import { decToLabel, fmtHours, toKey } from "@/lib/domain/dates";
@@ -82,14 +82,18 @@ export function TodayQuickTimeline() {
                   <Check size={13} style={{ color: b.completed ? "#fff" : p.color }} />
                 </button>
                 <div className="min-w-0 flex-1">
-                  <div
-                    className="text-text text-[13px] font-semibold truncate"
-                    style={{
-                      textDecoration: b.completed ? "line-through" : "none",
-                      opacity: b.completed ? 0.6 : 1,
-                    }}
-                  >
-                    {g.name}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <div
+                      className="text-text text-[13px] font-semibold truncate"
+                      style={{
+                        textDecoration: b.completed ? "line-through" : "none",
+                        opacity: b.completed ? 0.6 : 1,
+                      }}
+                    >
+                      {g.name}
+                    </div>
+                    <EnergyBadge level={b.energyLevel} compact />
+                    <DeferBadge count={b.deferCount} />
                   </div>
                   <div className="text-text-3 text-[11px] num">
                     {decToLabel(b.start)} · {fmtHours(b.duration)} · {p.label}

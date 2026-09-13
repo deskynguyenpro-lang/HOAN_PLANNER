@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import { Repeat } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Field, TextInput, SelectInput, DayPicker } from "@/components/ui/Field";
+import { EnergyLevelPicker } from "@/components/ui/bits";
 import { useToast } from "@/components/ui/Toast";
 import { useStore } from "@/lib/data/store";
 import { PILLARS } from "@/lib/domain/pillars";
 import { decToLabel, fmtHours, timeStrToDec, todayKey } from "@/lib/domain/dates";
-import type { Goal, PillarId, Schedule } from "@/lib/domain/types";
+import type { EnergyLevel, Goal, PillarId, Schedule } from "@/lib/domain/types";
 
 const DEFAULT_SCHEDULE: Schedule = {
   start: 8,
@@ -32,6 +33,7 @@ export function GoalForm({
   const [name, setName] = useState(goal?.name ?? "");
   const [target, setTarget] = useState(String(goal?.target ?? 1));
   const [category, setCategory] = useState<PillarId>(goal?.category ?? "work");
+  const [energyLevel, setEnergyLevel] = useState<EnergyLevel>(goal?.energyLevel ?? "MEDIUM");
   const [objectiveId, setObjectiveId] = useState(goal?.objectiveId ?? "");
   const [sch, setSch] = useState<Schedule>(
     goal?.schedule?.days?.length
@@ -67,7 +69,15 @@ export function GoalForm({
       setGoals(
         goals.map((g) =>
           g.id === goal.id
-            ? { ...g, name: name.trim(), target: hrs, category, objectiveId: objectiveId || null, schedule: finalSchedule }
+            ? {
+                ...g,
+                name: name.trim(),
+                target: hrs,
+                category,
+                objectiveId: objectiveId || null,
+                schedule: finalSchedule,
+                energyLevel,
+              }
             : g,
         ),
       );
@@ -84,7 +94,7 @@ export function GoalForm({
           schedule: finalSchedule,
           createdAt: todayKey(),
           archived: false,
-          energyLevel: "MEDIUM",
+          energyLevel,
         },
       ]);
       toast("Đã thêm mục tiêu hằng ngày.");
@@ -183,6 +193,10 @@ export function GoalForm({
             </div>
           </div>
         </div>
+
+        <Field label="Mức năng lượng cần thiết">
+          <EnergyLevelPicker value={energyLevel} onChange={setEnergyLevel} />
+        </Field>
 
         <Field label="Hướng tới mục tiêu lớn (tuỳ chọn)">
           <SelectInput value={objectiveId} onChange={(e) => setObjectiveId(e.target.value)}>

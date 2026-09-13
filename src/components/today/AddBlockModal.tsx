@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, PackagePlus } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Field, SelectInput, TextInput, ChipSelect } from "@/components/ui/Field";
+import { EnergyLevelPicker } from "@/components/ui/bits";
 import { useToast } from "@/components/ui/Toast";
 import { pillarOf } from "@/lib/domain/pillars";
 import { fmtHours, timeStrToDec } from "@/lib/domain/dates";
-import type { Goal } from "@/lib/domain/types";
+import type { EnergyLevel, Goal } from "@/lib/domain/types";
 
 export function AddBlockModal({
   goals,
@@ -18,7 +19,13 @@ export function AddBlockModal({
 }: {
   goals: Goal[];
   defaultTime: string;
-  onAdd: (b: { goalId: string; start: number; duration: number }) => void;
+  onAdd: (b: {
+    goalId: string;
+    start: number;
+    duration: number;
+    energyLevel: EnergyLevel;
+    isBufferBlock: boolean;
+  }) => void;
   onClose: () => void;
 }) {
   const { toast } = useToast();
@@ -26,6 +33,10 @@ export function AddBlockModal({
   const [goalId, setGoalId] = useState(activeGoals[0]?.id || "");
   const [time, setTime] = useState(defaultTime);
   const [duration, setDuration] = useState(1);
+  const [energyLevel, setEnergyLevel] = useState<EnergyLevel>(
+    activeGoals[0]?.energyLevel || "MEDIUM",
+  );
+  const [isBufferBlock, setIsBufferBlock] = useState(false);
 
   if (activeGoals.length === 0) {
     return (
@@ -45,7 +56,7 @@ export function AddBlockModal({
   }
 
   const submit = () => {
-    onAdd({ goalId, start: timeStrToDec(time), duration });
+    onAdd({ goalId, start: timeStrToDec(time), duration, energyLevel, isBufferBlock });
     toast("Đã thêm vào lịch trình.");
     onClose();
   };
@@ -69,7 +80,14 @@ export function AddBlockModal({
     >
       <div className="space-y-4">
         <Field label="Mục tiêu">
-          <SelectInput value={goalId} onChange={(e) => setGoalId(e.target.value)}>
+          <SelectInput
+            value={goalId}
+            onChange={(e) => {
+              setGoalId(e.target.value);
+              const g = activeGoals.find((x) => x.id === e.target.value);
+              if (g) setEnergyLevel(g.energyLevel);
+            }}
+          >
             {activeGoals.map((g) => (
               <option key={g.id} value={g.id}>
                 {pillarOf(g.category).label} · {g.name}
@@ -88,6 +106,33 @@ export function AddBlockModal({
             format={fmtHours}
           />
         </Field>
+        <Field label="Mức năng lượng cho buổi này">
+          <EnergyLevelPicker value={energyLevel} onChange={setEnergyLevel} />
+        </Field>
+        <button
+          type="button"
+          onClick={() => setIsBufferBlock((v) => !v)}
+          className="w-full flex items-center gap-2.5 rounded-xl px-3.5 py-3 text-left transition"
+          style={{
+            background: isBufferBlock
+              ? "color-mix(in srgb, var(--warn) 16%, transparent)"
+              : "var(--chip)",
+            border: isBufferBlock ? "1.5px solid var(--warn)" : "1.5px solid transparent",
+          }}
+        >
+          <PackagePlus size={16} style={{ color: isBufferBlock ? "var(--warn)" : "var(--text-2)" }} />
+          <span className="min-w-0">
+            <span
+              className="block text-[12.5px] font-bold"
+              style={{ color: isBufferBlock ? "var(--warn)" : "var(--text)" }}
+            >
+              Khung giờ dự phòng (Buffer)
+            </span>
+            <span className="block text-[10.5px] text-text-3 leading-snug">
+              Đánh dấu buổi này thuộc phần thời gian đệm trong tuần, không phải việc cố định.
+            </span>
+          </span>
+        </button>
       </div>
     </Sheet>
   );

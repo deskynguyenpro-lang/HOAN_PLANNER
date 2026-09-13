@@ -13,6 +13,7 @@ import { ObjectiveForm } from "./ObjectiveForm";
 import { CheckinForm } from "./CheckinForm";
 import { GoalRow } from "./GoalRow";
 import { GoalForm } from "./GoalForm";
+import { BufferCapacityWidget } from "./BufferCapacityWidget";
 
 type Panel =
   | { kind: "none" }
@@ -52,6 +53,8 @@ export function PlanView() {
           đo hiệu quả cho bạn.
         </p>
       </div>
+
+      <BufferCapacityWidget />
 
       {/* ─── Mục tiêu lớn ────────────────────────────────────────────────── */}
       <section>

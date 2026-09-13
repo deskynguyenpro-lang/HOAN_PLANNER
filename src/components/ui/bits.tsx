@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { pillarOf } from "@/lib/domain/pillars";
+import { ENERGY_META, ENERGY_LEVELS, deferSeverity } from "@/lib/domain/energy";
+import type { EnergyLevel } from "@/lib/domain/types";
 
 /* ─── StatChip ─────────────────────────────────────────────────────────── */
 export function StatChip({
@@ -157,6 +159,109 @@ export function PillarTag({ id }: { id: string }) {
     >
       <PillarDot id={id} size={7} />
       {p.label}
+    </span>
+  );
+}
+
+/* ─── Năng lượng ──────────────────────────────────────────────────────── */
+export function EnergyBadge({
+  level,
+  compact = false,
+}: {
+  level: EnergyLevel;
+  compact?: boolean;
+}) {
+  const m = ENERGY_META[level];
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full font-semibold flex-shrink-0"
+      style={{
+        color: m.color,
+        background: "color-mix(in srgb, " + m.color + " 14%, transparent)",
+        padding: compact ? "1px 6px" : "2px 8px",
+        fontSize: compact ? 10 : 11,
+      }}
+      title={m.hint}
+    >
+      <span aria-hidden>{m.emoji}</span>
+      {!compact && m.label}
+    </span>
+  );
+}
+
+export function EnergyLevelPicker({
+  value,
+  onChange,
+}: {
+  value: EnergyLevel;
+  onChange: (v: EnergyLevel) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {ENERGY_LEVELS.map((lvl) => {
+        const m = ENERGY_META[lvl];
+        const on = lvl === value;
+        return (
+          <button
+            key={lvl}
+            type="button"
+            onClick={() => onChange(lvl)}
+            className="flex items-start gap-2 rounded-xl px-3 py-2.5 text-left transition"
+            style={{
+              background: on ? "color-mix(in srgb, " + m.color + " 16%, transparent)" : "var(--chip)",
+              border: on ? `1.5px solid ${m.color}` : "1.5px solid transparent",
+            }}
+          >
+            <span className="text-[15px] leading-none mt-0.5" aria-hidden>
+              {m.emoji}
+            </span>
+            <span className="min-w-0">
+              <span
+                className="block text-[12px] font-bold truncate"
+                style={{ color: on ? m.color : "var(--text)" }}
+              >
+                {m.label}
+              </span>
+              <span className="block text-[10.5px] text-text-3 leading-snug">{m.hint}</span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── Cảnh báo hoãn task ──────────────────────────────────────────────── */
+export function DeferBadge({ count }: { count: number }) {
+  const sev = deferSeverity(count);
+  if (sev === "none") return null;
+  if (sev === "critical") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full font-bold flex-shrink-0"
+        style={{
+          color: "var(--bad)",
+          background: "color-mix(in srgb, var(--bad) 16%, transparent)",
+          padding: "2px 8px",
+          fontSize: 11,
+        }}
+        title="Bị hoãn nhiều lần — cân nhắc chia nhỏ thành các việc ngắn hơn."
+      >
+        ⚠️ Hoãn {count}+ lần · Cần chia nhỏ
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full font-semibold flex-shrink-0"
+      style={{
+        color: "var(--bad)",
+        background: "color-mix(in srgb, var(--bad) 12%, transparent)",
+        padding: "1px 6px",
+        fontSize: 10.5,
+      }}
+    >
+      🔴 Hoãn {count} lần
     </span>
   );
 }

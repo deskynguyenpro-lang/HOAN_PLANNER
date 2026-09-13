@@ -24,6 +24,7 @@ import {
 import { categoryTotals, dayStatsFromBlocks, copyWeekBlocks } from "@/lib/domain/stats";
 import { computeStreak } from "@/lib/domain/streak";
 import { dayBlocks } from "@/lib/domain/schedule";
+import type { EnergyLevel } from "@/lib/domain/types";
 import { TimelineDay } from "./TimelineDay";
 import { AddBlockModal } from "./AddBlockModal";
 
@@ -45,10 +46,14 @@ export function TodayView() {
     goalId,
     start,
     duration,
+    energyLevel,
+    isBufferBlock,
   }: {
     goalId: string;
     start: number;
     duration: number;
+    energyLevel: EnergyLevel;
+    isBufferBlock: boolean;
   }) => {
     const blocks = dayBlocks(dateKey, logs);
     setLogs({
@@ -64,9 +69,9 @@ export function TodayView() {
             completed: false,
             skipped: false,
             reason: "",
-            energyLevel: goals.find((g) => g.id === goalId)?.energyLevel || "MEDIUM",
+            energyLevel,
             deferCount: 0,
-            isBufferBlock: false,
+            isBufferBlock,
           },
         ],
       },
