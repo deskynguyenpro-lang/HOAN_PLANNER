@@ -84,6 +84,7 @@ export function GoalForm({
           schedule: finalSchedule,
           createdAt: todayKey(),
           archived: false,
+          energyLevel: "MEDIUM",
         },
       ]);
       toast("Đã thêm mục tiêu hằng ngày.");

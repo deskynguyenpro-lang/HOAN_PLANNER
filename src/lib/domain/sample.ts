@@ -53,6 +53,7 @@ export function buildSampleData(): AppData {
       createdAt: from,
       archived: false,
       schedule: { start: 19.5, duration: 1, days: [1, 2, 3, 4, 5], fromDate: from, toDate: "" },
+      energyLevel: "MEDIUM" as const,
     },
     {
       id: "g_sample_listening",
@@ -63,6 +64,7 @@ export function buildSampleData(): AppData {
       createdAt: from,
       archived: false,
       schedule: { start: 6.5, duration: 0.75, days: [0, 1, 2, 3, 4, 5, 6], fromDate: from, toDate: "" },
+      energyLevel: "MEDIUM" as const,
     },
     {
       id: "g_sample_run",
@@ -73,6 +75,7 @@ export function buildSampleData(): AppData {
       createdAt: from,
       archived: false,
       schedule: { start: 5.5, duration: 0.75, days: [1, 3, 5], fromDate: from, toDate: "" },
+      energyLevel: "LOW_ENERGY" as const,
     },
     {
       id: "g_sample_report",
@@ -83,6 +86,7 @@ export function buildSampleData(): AppData {
       createdAt: from,
       archived: false,
       schedule: { start: 9, duration: 2, days: [1, 2, 3, 4, 5], fromDate: from, toDate: "" },
+      energyLevel: "HIGH_FOCUS" as const,
     },
     {
       id: "g_sample_paper",
@@ -93,6 +97,7 @@ export function buildSampleData(): AppData {
       createdAt: from,
       archived: false,
       schedule: { start: 21, duration: 1, days: [2, 4, 6], fromDate: from, toDate: "" },
+      energyLevel: "HIGH_FOCUS" as const,
     },
   ];
 
@@ -126,6 +131,9 @@ export function buildSampleData(): AppData {
         completed,
         skipped,
         reason,
+        energyLevel: g.energyLevel,
+        deferCount: 0,
+        isBufferBlock: false,
       });
     });
     if (blocks.length) logs[dk] = { blocks };

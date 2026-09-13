@@ -59,6 +59,9 @@ export function getEffectiveBlocks(
       skipped: false,
       reason: "",
       virtual: true,
+      energyLevel: g.energyLevel || "MEDIUM",
+      deferCount: 0,
+      isBufferBlock: false,
     });
   });
 

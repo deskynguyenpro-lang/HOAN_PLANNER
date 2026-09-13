@@ -115,6 +115,8 @@ export function copyWeekBlocks(logs: Logs, sourceStart: Date, weeksAhead: number
       completed: false,
       skipped: false,
       reason: "",
+      deferCount: 0,
+      isBufferBlock: false,
     }));
     next[tgtKey] = { blocks: copied };
   }

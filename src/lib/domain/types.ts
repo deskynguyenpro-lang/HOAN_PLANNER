@@ -2,6 +2,10 @@
 
 export type PillarId = "work" | "study" | "health" | "research";
 
+/** Mức năng lượng cần thiết để làm việc này — dùng để sắp lịch đúng lúc bạn còn sức. */
+export type EnergyLevel = "HIGH_FOCUS" | "MEDIUM" | "LOW_ENERGY" | "ADMIN";
+export const DEFAULT_ENERGY_LEVEL: EnergyLevel = "MEDIUM";
+
 export interface Schedule {
   start: number; // giờ trong ngày, dạng thập phân (8.5 = 8:30)
   duration: number; // số giờ
@@ -19,6 +23,8 @@ export interface Goal {
   schedule: Schedule;
   createdAt: string;
   archived: boolean;
+  /** Mức năng lượng cần để làm việc này tốt nhất — mặc định MEDIUM. */
+  energyLevel: EnergyLevel;
 }
 
 export interface Block {
@@ -31,6 +37,12 @@ export interface Block {
   reason: string;
   virtual?: boolean;
   hidden?: boolean;
+  /** Kế thừa từ Goal khi khối được tạo, có thể chỉnh riêng cho từng buổi. */
+  energyLevel: EnergyLevel;
+  /** Số lần buổi này bị hoãn/dời sang thời điểm khác. Mặc định 0. */
+  deferCount: number;
+  /** Đánh dấu khối thuộc phần thời gian dự phòng (buffer) trong tuần. */
+  isBufferBlock: boolean;
 }
 
 export interface DayLog {
