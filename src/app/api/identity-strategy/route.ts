@@ -2,21 +2,30 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/data/local-store";
 import { PILLARS } from "@/lib/domain/pillars";
+import {
+  DEFAULT_TARGET_TIMEFRAME,
+  isShortTermTimeframe,
+  timeframeDisplayLabel,
+  TIMEFRAME_OPTIONS,
+  type TargetTimeframe,
+} from "@/lib/domain/identity";
 
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
 
 const SYSTEM_PROMPT = `Bạn là một chiến lược gia phát triển cá nhân (Elite Strategic Life Coach) cho một công cụ lập kế hoạch tiếng Việt xoay quanh 4 trụ cột cố định: Công việc (work), Học tập (study), Sức khỏe (health), Nghiên cứu (research).
 
-Nhiệm vụ: đọc bản mô tả "định hướng bản thân trong 1-3 năm tới" của người dùng, cùng danh sách mục tiêu hằng ngày họ ĐANG có, rồi:
-1. Tính tỷ trọng % thời gian/năng lượng nên phân bổ cho 4 trụ cột (bắt buộc 4 số nguyên, tổng đúng bằng 100).
+Nhiệm vụ: đọc bản mô tả định hướng bản thân của người dùng (kèm mốc thời gian họ chọn), cùng danh sách mục tiêu hằng ngày họ ĐANG có, rồi:
+1. Tính tỷ trọng % thời gian/năng lượng nên phân bổ cho 4 trụ cột (bắt buộc 4 số nguyên, tổng đúng bằng 100) — PHẢI điều chỉnh theo mốc thời gian:
+   - Mốc NGẮN HẠN (3-6 tháng): dồn mạnh % vào 1-2 trụ cột chính liên quan trực tiếp đến định hướng (kiểu "Nước rút" — có thể lệch hẳn, ví dụ 50-60% cho trụ cột chính), chấp nhận bỏ bớt các trụ cột không liên quan.
+   - Mốc DÀI HẠN (1 năm trở lên, hoặc tuỳ chỉnh dài): phân bổ bền vững, cân bằng hơn giữa các trụ cột liên quan — tránh dồn quá 45% vào một trụ cột duy nhất trừ khi định hướng thực sự đòi hỏi.
 2. Trong số các mục tiêu đang có, chọn ra những id thực sự phù hợp nhất với định hướng ("ưu tiên cốt lõi") — chỉ chọn nếu thực sự liên quan rõ ràng, không chọn tất cả cho có.
-3. Gợi ý 2-4 hành động ưu tiên cụ thể (có thể là việc chưa tồn tại trong danh sách).
+3. Gợi ý 2-4 hành động ưu tiên cụ thể (có thể là việc chưa tồn tại trong danh sách), phù hợp với quy mô của mốc thời gian đã chọn.
 4. Chỉ ra việc nên giảm bớt/tạm gác để tránh kiệt sức.
 
 Chỉ trả lời bằng đúng một khối JSON hợp lệ, không thêm chữ nào khác, không dùng markdown code fence, đúng cấu trúc:
 {
   "pillar_weights": { "work": number, "study": number, "health": number, "research": number },
-  "strategic_summary": "2-3 câu tiếng Việt giải thích vì sao phân bổ như vậy",
+  "strategic_summary": "2-3 câu tiếng Việt giải thích vì sao phân bổ như vậy, có nhắc đến mốc thời gian",
   "core_goal_ids": ["id1", "id2"],
   "core_priorities": [{ "pillar": "work|study|health|research", "action": "...", "reason": "..." }],
   "deprioritized_advice": "1-2 câu tiếng Việt"
@@ -29,7 +38,12 @@ interface GoalBrief {
   targetHours: number;
 }
 
-function buildUserPrompt(vision: string, goals: GoalBrief[]): string {
+function buildUserPrompt(
+  vision: string,
+  goals: GoalBrief[],
+  targetTimeframe: TargetTimeframe,
+  customTimeframeLabel: string,
+): string {
   const goalLines =
     goals.length > 0
       ? goals
@@ -37,13 +51,20 @@ function buildUserPrompt(vision: string, goals: GoalBrief[]): string {
           .join("\n")
       : "(chưa có mục tiêu hằng ngày nào)";
 
-  return `ĐỊNH HƯỚNG NGƯỜI DÙNG MÔ TẢ:
+  const timeframeLabel = timeframeDisplayLabel({ targetTimeframe, customTimeframeLabel });
+  const scale = isShortTermTimeframe(targetTimeframe)
+    ? "NGẮN HẠN — dồn lực, chấp nhận lệch hẳn về 1-2 trụ cột chính"
+    : "DÀI HẠN — phân bổ cân bằng, bền vững";
+
+  return `MỐC THỜI GIAN NGƯỜI DÙNG CHỌN: ${timeframeLabel} (${scale})
+
+ĐỊNH HƯỚNG NGƯỜI DÙNG MÔ TẢ (cho mốc thời gian trên):
 ${vision.trim()}
 
 DANH SÁCH MỤC TIÊU HẰNG NGÀY ĐANG CÓ:
 ${goalLines}
 
-Hãy trả về đúng JSON theo cấu trúc đã quy định.`;
+Hãy trả về đúng JSON theo cấu trúc đã quy định, với tỷ trọng % đã điều chỉnh đúng theo mốc thời gian ${timeframeLabel} nêu trên.`;
 }
 
 function extractJson(text: string): unknown {
@@ -75,10 +96,16 @@ export async function POST(req: NextRequest) {
 
   let vision = "";
   let goals: GoalBrief[] = [];
+  let targetTimeframe: TargetTimeframe = DEFAULT_TARGET_TIMEFRAME;
+  let customTimeframeLabel = "";
   try {
     const body = await req.json();
     vision = String(body.vision || "").trim();
     goals = Array.isArray(body.goals) ? body.goals : [];
+    if (TIMEFRAME_OPTIONS.includes(body.targetTimeframe)) {
+      targetTimeframe = body.targetTimeframe;
+    }
+    customTimeframeLabel = String(body.customTimeframeLabel || "").trim();
   } catch {
     return NextResponse.json({ error: "Body không hợp lệ." }, { status: 400 });
   }
@@ -101,7 +128,9 @@ export async function POST(req: NextRequest) {
         model: MODEL,
         max_tokens: 900,
         system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: buildUserPrompt(vision, goals) }],
+        messages: [
+          { role: "user", content: buildUserPrompt(vision, goals, targetTimeframe, customTimeframeLabel) },
+        ],
       }),
     });
 

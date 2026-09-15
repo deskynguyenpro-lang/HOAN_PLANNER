@@ -8,6 +8,8 @@ export type FocusMode = "growth" | "balance" | "sprint";
 
 export type PillarWeights = Record<PillarId, number>;
 
+export type TargetTimeframe = "3_MONTHS" | "6_MONTHS" | "1_YEAR" | "2_3_YEARS" | "CUSTOM";
+
 export interface CorePriority {
   pillar: PillarId;
   action: string;
@@ -18,6 +20,10 @@ export interface IdentityProfile {
   vision: string;
   pillarWeights: PillarWeights;
   focusMode: FocusMode;
+  /** Mốc thời gian định hướng — ảnh hưởng cách AI phân bổ % (ngắn hạn dồn lực, dài hạn cân bằng). */
+  targetTimeframe: TargetTimeframe;
+  /** Chỉ dùng khi targetTimeframe === "CUSTOM" — mô tả mốc thời gian tự đặt, VD: "18 tháng". */
+  customTimeframeLabel: string;
   strategicSummary: string;
   corePriorities: CorePriority[];
   /** Các mục tiêu hằng ngày (theo id) mà AI đánh giá là ưu tiên cốt lõi. */
@@ -40,11 +46,53 @@ export const FOCUS_MODE_HINT: Record<FocusMode, string> = {
   sprint: "Tạm ẩn bớt việc phụ trên lịch trình để dồn toàn lực cho ưu tiên cốt lõi.",
 };
 
+export const DEFAULT_TARGET_TIMEFRAME: TargetTimeframe = "1_YEAR";
+
+/** Thứ tự hiển thị các lựa chọn mốc thời gian trên UI. */
+export const TIMEFRAME_OPTIONS: TargetTimeframe[] = [
+  "3_MONTHS",
+  "6_MONTHS",
+  "1_YEAR",
+  "2_3_YEARS",
+  "CUSTOM",
+];
+
+export const TIMEFRAME_LABEL: Record<TargetTimeframe, string> = {
+  "3_MONTHS": "3 tháng",
+  "6_MONTHS": "6 tháng",
+  "1_YEAR": "1 năm",
+  "2_3_YEARS": "2-3 năm",
+  CUSTOM: "Tùy chỉnh...",
+};
+
+/** Mốc ngắn hạn (3-6 tháng) -> AI nên dồn % vào 1-2 trụ cột (kiểu Nước rút). */
+export function isShortTermTimeframe(tf: TargetTimeframe): boolean {
+  return tf === "3_MONTHS" || tf === "6_MONTHS";
+}
+
+/** Nhãn hiển thị đầy đủ cho tiêu đề/prompt — dùng nhãn tự đặt khi là CUSTOM. */
+export function timeframeDisplayLabel(profile: Pick<IdentityProfile, "targetTimeframe" | "customTimeframeLabel">): string {
+  if (profile.targetTimeframe === "CUSTOM") {
+    return profile.customTimeframeLabel.trim() || "mốc thời gian tự chọn";
+  }
+  return TIMEFRAME_LABEL[profile.targetTimeframe];
+}
+
+/** Placeholder cho khung nhập định hướng, đổi theo mốc thời gian đã chọn. */
+export function visionPlaceholderFor(tf: TargetTimeframe): string {
+  if (isShortTermTimeframe(tf)) {
+    return 'VD: "Cải thiện IELTS từ 5.0 lên 6.0 và hoàn thiện 1 dự án BESS container để bàn giao trong thời gian này."';
+  }
+  return 'VD: "Trở thành kỹ sư cơ khí làm việc được ở môi trường quốc tế trong thời gian này — cần IELTS 6.5, vững chuyên môn, giữ sức khoẻ để trụ được cường độ cao."';
+}
+
 export function emptyIdentity(): IdentityProfile {
   return {
     vision: "",
     pillarWeights: EQUAL_WEIGHTS,
     focusMode: "balance",
+    targetTimeframe: DEFAULT_TARGET_TIMEFRAME,
+    customTimeframeLabel: "",
     strategicSummary: "",
     corePriorities: [],
     coreGoalIds: [],

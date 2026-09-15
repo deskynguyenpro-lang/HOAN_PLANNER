@@ -12,11 +12,17 @@ import {
   emptyIdentity,
   normalizeWeights,
   recommendedAllocation,
+  timeframeDisplayLabel,
+  visionPlaceholderFor,
   FOCUS_MODE_LABEL,
   FOCUS_MODE_HINT,
+  TIMEFRAME_OPTIONS,
+  TIMEFRAME_LABEL,
+  DEFAULT_TARGET_TIMEFRAME,
   type FocusMode,
   type IdentityProfile,
   type PillarWeights,
+  type TargetTimeframe,
 } from "@/lib/domain/identity";
 import { fetchIdentity, saveIdentity } from "@/lib/data/identity-store";
 import { PriorityWeightBar } from "./PriorityWeightBar";
@@ -35,6 +41,8 @@ export function IdentityView() {
     research: "25",
   });
   const [focusMode, setFocusMode] = useState<FocusMode>("balance");
+  const [targetTimeframe, setTargetTimeframe] = useState<TargetTimeframe>(DEFAULT_TARGET_TIMEFRAME);
+  const [customTimeframeLabel, setCustomTimeframeLabel] = useState("");
   const [saving, setSaving] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState("");
@@ -46,6 +54,8 @@ export function IdentityView() {
         setProfile(p);
         setVision(p.vision);
         setFocusMode(p.focusMode);
+        setTargetTimeframe(p.targetTimeframe);
+        setCustomTimeframeLabel(p.customTimeframeLabel);
         setWeightInputs(
           Object.fromEntries(PILLARS.map((pl) => [pl.id, String(p.pillarWeights[pl.id])])),
         );
@@ -88,6 +98,8 @@ export function IdentityView() {
       vision,
       pillarWeights: previewWeights,
       focusMode,
+      targetTimeframe,
+      customTimeframeLabel,
       updatedAt: new Date().toISOString(),
     };
     persist(next, "Đã lưu định hướng.");
@@ -107,7 +119,12 @@ export function IdentityView() {
       const res = await fetch("/api/identity-strategy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vision, goals: briefGoals }),
+        body: JSON.stringify({
+          vision,
+          goals: briefGoals,
+          targetTimeframe,
+          customTimeframeLabel,
+        }),
       });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || "Không phân tích được.");
@@ -116,6 +133,8 @@ export function IdentityView() {
         vision,
         pillarWeights: normalizeWeights(data.pillarWeights),
         focusMode,
+        targetTimeframe,
+        customTimeframeLabel,
         strategicSummary: data.strategicSummary,
         corePriorities: data.corePriorities,
         coreGoalIds: data.coreGoalIds,
@@ -148,13 +167,44 @@ export function IdentityView() {
 
       <Card>
         <h2 className="headline text-[15px] flex items-center gap-1.5 mb-3">
-          <Compass size={16} className="text-brand" /> Định hướng của bạn (1-3 năm tới)
+          <Compass size={16} className="text-brand" /> Định hướng của bạn (
+          {timeframeDisplayLabel({ targetTimeframe, customTimeframeLabel })})
         </h2>
+
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {TIMEFRAME_OPTIONS.map((tf) => {
+            const on = tf === targetTimeframe;
+            return (
+              <button
+                key={tf}
+                type="button"
+                onClick={() => setTargetTimeframe(tf)}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition"
+                style={{
+                  background: on ? "var(--brand)" : "var(--chip)",
+                  color: on ? "#fff" : "var(--text-2)",
+                }}
+              >
+                {TIMEFRAME_LABEL[tf]}
+              </button>
+            );
+          })}
+        </div>
+        {targetTimeframe === "CUSTOM" && (
+          <input
+            type="text"
+            value={customTimeframeLabel}
+            onChange={(e) => setCustomTimeframeLabel(e.target.value)}
+            placeholder='VD: "18 tháng", "Trước khi tốt nghiệp"...'
+            className="field w-full px-3.5 py-2.5 text-sm mb-3"
+          />
+        )}
+
         <textarea
           value={vision}
           onChange={(e) => setVision(e.target.value)}
           rows={5}
-          placeholder='VD: "Trở thành kỹ sư cơ khí làm việc được ở môi trường quốc tế trong 2 năm tới — cần IELTS 6.5, vững chuyên môn, giữ sức khoẻ để trụ được cường độ cao."'
+          placeholder={visionPlaceholderFor(targetTimeframe)}
           className="field w-full px-3.5 py-3 text-sm leading-relaxed"
         />
         {error && <p className="text-bad text-[12px] mt-2">{error}</p>}
