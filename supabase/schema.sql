@@ -68,6 +68,19 @@ create table if not exists public.settings (
   updated_at    timestamptz default now()
 );
 
+-- 6. NHẬT KÝ HÀNH ĐỘNG AI (xếp lại lịch tự động — phục vụ Hoàn tác) -------
+create table if not exists public.ai_action_logs (
+  id              bigint generated always as identity primary key,
+  user_id         uuid not null references auth.users (id) on delete cascade,
+  task_id         text not null,
+  old_schedule    jsonb not null,
+  new_schedule    jsonb not null,
+  reasoning       text default '',
+  autonomy_level  smallint not null default 3,
+  undone          boolean not null default false,
+  created_at      timestamptz default now()
+);
+
 -- ============================================================================
 --  ROW LEVEL SECURITY — mỗi người chỉ đọc/ghi được dữ liệu của chính mình
 -- ============================================================================
@@ -77,6 +90,7 @@ alter table public.goals              enable row level security;
 alter table public.day_logs           enable row level security;
 alter table public.weekly_reviews     enable row level security;
 alter table public.settings           enable row level security;
+alter table public.ai_action_logs     enable row level security;
 
 do $$
 declare
@@ -84,7 +98,7 @@ declare
 begin
   foreach t in array array[
     'objectives', 'objective_checkins', 'goals',
-    'day_logs', 'weekly_reviews', 'settings'
+    'day_logs', 'weekly_reviews', 'settings', 'ai_action_logs'
   ]
   loop
     execute format('drop policy if exists "own rows select" on public.%I', t);
@@ -109,3 +123,4 @@ create index if not exists objectives_user_idx   on public.objectives (user_id);
 create index if not exists checkins_obj_idx      on public.objective_checkins (objective_id);
 create index if not exists day_logs_user_idx     on public.day_logs (user_id);
 create index if not exists weekly_user_idx       on public.weekly_reviews (user_id, week_start);
+create index if not exists ai_logs_user_idx      on public.ai_action_logs (user_id, created_at desc);
