@@ -308,7 +308,14 @@ export function detectAndProcessMissedTasks(
   const todayKeyStr = toKey(now);
   const nowDec = now.getHours() + now.getMinutes() / 60;
 
+  // `nextLogs` là kết quả TRẢ VỀ — chỉ chứa phần tăng defer_count thật, đúng
+  // hợp đồng của hàm này (không tự áp dụng đề xuất xếp lại). `simulatedLogs`
+  // chỉ dùng NỘI BỘ để tìm chỗ trống: mỗi đề xuất "scheduled" được tạm áp vào
+  // đây ngay sau khi sinh ra, để các task bị bỏ lỡ xử lý SAU trong cùng lượt
+  // này không bị đề xuất trùng giờ với nhau (bug đã gặp: 2 task khác nhau
+  // cùng được đề xuất vào đúng 1 khung giờ vì không "thấy" đề xuất của nhau).
   let nextLogs = logs;
+  let simulatedLogs = logs;
   const outcomes: RescheduleOutcome[] = [];
 
   for (let i = 0; i < MISSED_LOOKBACK_DAYS; i++) {
@@ -329,6 +336,9 @@ export function detectAndProcessMissedTasks(
       nextLogs = materializeAndUpdate(dateKey, b.id, blocksToday, nextLogs, {
         deferCount: nextDeferCount,
       });
+      simulatedLogs = materializeAndUpdate(dateKey, b.id, blocksToday, simulatedLogs, {
+        deferCount: nextDeferCount,
+      });
       const updatedBlock: Block = { ...b, deferCount: nextDeferCount };
       const missed: MissedBlockRef = { dateKey, block: updatedBlock, goal };
 
@@ -342,9 +352,19 @@ export function detectAndProcessMissedTasks(
         continue;
       }
 
-      const proposed = calculateAutoReschedule(missed, goals, nextLogs, now);
+      const proposed = calculateAutoReschedule(missed, goals, simulatedLogs, now);
       if (proposed) {
-        outcomes.push({ kind: "scheduled", missed, proposed, reasoning: reasoningFor(proposed, missed) });
+        const outcome: RescheduleOutcome = {
+          kind: "scheduled",
+          missed,
+          proposed,
+          reasoning: reasoningFor(proposed, missed),
+        };
+        outcomes.push(outcome);
+        simulatedLogs = applyProposedSchedule(
+          outcome as Extract<RescheduleOutcome, { kind: "scheduled" }>,
+          simulatedLogs,
+        );
       } else {
         outcomes.push({
           kind: "overload",

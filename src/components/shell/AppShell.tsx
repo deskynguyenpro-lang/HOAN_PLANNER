@@ -19,6 +19,7 @@ import { useStore } from "@/lib/data/store";
 import { ThemeToggle } from "./ThemeToggle";
 import { SettingsMenu } from "@/components/settings/SettingsMenu";
 import { DataErrorBanner } from "./DataErrorBanner";
+import { AiChatWidget } from "@/components/chat/AiChatWidget";
 
 const NAV = [
   { href: "/tong-quan", label: "Tổng quan", icon: LayoutDashboard },
@@ -255,6 +256,8 @@ export function AppShell({
           })}
         </div>
       </nav>
+
+      <AiChatWidget />
     </div>
   );
 }

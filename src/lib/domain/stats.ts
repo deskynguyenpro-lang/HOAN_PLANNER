@@ -102,6 +102,52 @@ export function objectiveProgress(obj: Objective) {
   return { current, pct, sorted, daysLeft };
 }
 
+export interface VelocityAlert {
+  objectiveId: string;
+  objectiveName: string;
+  /** Số ngày dự kiến trễ so với deadline nếu giữ đúng tốc độ hiện tại. */
+  projectedLateDays: number;
+  message: string;
+}
+
+/**
+ * Dựa vào tốc độ tiến bộ thực tế giữa các lần check-in gần nhất, dự báo mục
+ * tiêu lớn có kịp deadline không — chỉ báo khi có đủ dữ liệu (>=2 check-in,
+ * đang có tiến bộ đo được) để tránh cảnh báo sai vì thiếu số liệu.
+ */
+export function computeVelocityAlerts(objectives: Objective[]): VelocityAlert[] {
+  const alerts: VelocityAlert[] = [];
+  for (const obj of objectives.filter((o) => !o.archived && o.deadline)) {
+    const { current, sorted, daysLeft } = objectiveProgress(obj);
+    if (sorted.length < 2 || daysLeft === null || daysLeft <= 0) continue;
+
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const daysElapsed = (parseKey(last.date).getTime() - parseKey(first.date).getTime()) / 86400000;
+    if (daysElapsed <= 0) continue;
+
+    const direction = obj.targetValue >= obj.startValue ? 1 : -1;
+    const progressSoFar = direction === 1 ? last.value - first.value : first.value - last.value;
+    if (progressSoFar <= 0) continue; // chưa đo được tiến bộ nào — không đủ cơ sở dự báo
+
+    const ratePerDay = progressSoFar / daysElapsed;
+    const remaining = direction === 1 ? obj.targetValue - current : current - obj.targetValue;
+    if (remaining <= 0) continue; // đã đạt hoặc vượt mục tiêu
+
+    const daysNeeded = remaining / ratePerDay;
+    const projectedLateDays = Math.ceil(daysNeeded - daysLeft);
+    if (projectedLateDays > 0) {
+      alerts.push({
+        objectiveId: obj.id,
+        objectiveName: obj.name,
+        projectedLateDays,
+        message: `Với tốc độ hiện tại, mục tiêu "${obj.name}" dự kiến sẽ trễ khoảng ${projectedLateDays} ngày so với mốc đã chọn. Bạn muốn chia nhỏ scope hay tối ưu lại lịch làm việc?`,
+      });
+    }
+  }
+  return alerts;
+}
+
 export function copyWeekBlocks(logs: Logs, sourceStart: Date, weeksAhead: number): Logs {
   const targetStart = addDays(sourceStart, 7 * weeksAhead);
   const next: Logs = { ...logs };

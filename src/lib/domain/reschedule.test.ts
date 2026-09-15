@@ -232,6 +232,33 @@ group("9. Tính thuần (không side-effect)", () => {
   void tKey;
 });
 
+// ─── 10. Nhiều task bị bỏ lỡ cùng lượt -> đề xuất không được trùng giờ ──
+group("10. Nhiều task bỏ lỡ cùng lượt không đề xuất trùng giờ", () => {
+  const yKey = toKey(addDays(NOW, -1));
+  const goalA = makeGoal("gA", "MEDIUM", 1);
+  const goalB = makeGoal("gB", "MEDIUM", 1);
+  // Cả 2 đều bị bỏ lỡ hôm qua, lịch trống hoàn toàn ở các ngày sắp tới ->
+  // nếu không thấy đề xuất của nhau, cả 2 sẽ cùng rơi vào 06:00 ngày mai.
+  const blockA = makeBlock("bA", "gA", 9, 1);
+  const blockB = makeBlock("bB", "gB", 10, 1);
+  const logs: Logs = { [yKey]: { blocks: [blockA, blockB] } };
+
+  const { outcomes } = detectAndProcessMissedTasks([goalA, goalB], logs, NOW);
+  assert(outcomes.length === 2, "phát hiện đủ 2 task bị bỏ lỡ");
+  const oA = scheduled(outcomes[0]);
+  const oB = scheduled(outcomes[1]);
+
+  const overlap =
+    oA.proposed.dateKey === oB.proposed.dateKey &&
+    oA.proposed.start < oB.proposed.start + oB.proposed.duration &&
+    oB.proposed.start < oA.proposed.start + oA.proposed.duration;
+  assert(!overlap, "2 đề xuất không được chồng giờ lên nhau");
+  assert(
+    !(oA.proposed.dateKey === oB.proposed.dateKey && oA.proposed.start === oB.proposed.start),
+    "không đề xuất đúng cùng 1 giờ bắt đầu cho 2 task khác nhau",
+  );
+});
+
 // ─── Kết quả ─────────────────────────────────────────────────────────────
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
