@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "tsx src/lib/domain/reschedule.test.ts && tsx src/lib/domain/stats.test.ts && tsx src/lib/domain/strategyDiagnosis.test.ts"
+    "test": "tsx src/lib/domain/reschedule.test.ts && tsx src/lib/domain/stats.test.ts && tsx src/lib/domain/strategyDiagnosis.test.ts && tsx src/lib/domain/fixedBlocks.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

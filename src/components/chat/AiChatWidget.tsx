@@ -19,11 +19,14 @@ import { fetchIdentity } from "@/lib/data/identity-store";
 import { fetchBufferCapacityPct } from "@/lib/data/settings-store";
 import { appendActionLog } from "@/lib/data/ai-log-store";
 import { fetchExternalBusyBlocks, isGoogleCalendarFeatureAvailable } from "@/lib/data/google-calendar-store";
+import { fetchFixedBlocks } from "@/lib/data/fixed-blocks-store";
+import { expandFixedBlocksToExternalBusy } from "@/lib/domain/fixedBlocks";
 import type { IdentityProfile } from "@/lib/domain/identity";
 import { buildUserFullContext } from "@/lib/domain/aiContext";
 import {
   applyProposedSchedule,
   detectAndProcessMissedTasks,
+  mergeExternalBusy,
   type RescheduleOutcome,
 } from "@/lib/domain/reschedule";
 import { pillarOf } from "@/lib/domain/pillars";
@@ -159,12 +162,16 @@ export function AiChatWidget() {
     if (loading) return;
     const now = new Date();
 
-    let externalBusyByDay = {};
+    const fixedBlocks = await fetchFixedBlocks().catch(() => []);
+    const fixedBusy = expandFixedBlocksToExternalBusy(fixedBlocks, now);
+
+    let googleBusy = {};
     if (isGoogleCalendarFeatureAvailable()) {
       const from = now.toISOString();
       const to = new Date(now.getTime() + 8 * 86400000).toISOString();
-      externalBusyByDay = await fetchExternalBusyBlocks(from, to).catch(() => ({}));
+      googleBusy = await fetchExternalBusyBlocks(from, to).catch(() => ({}));
     }
+    const externalBusyByDay = mergeExternalBusy(fixedBusy, googleBusy);
 
     const { nextLogs, outcomes } = detectAndProcessMissedTasks(
       goalsRef.current,

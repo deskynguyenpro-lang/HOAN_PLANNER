@@ -108,6 +108,17 @@ export interface Interval {
  */
 export type ExternalBusyMap = Record<string, Interval[]>;
 
+/** Gộp nhiều nguồn lịch ngoài (Google Calendar, khung giờ cố định tự khai báo...) thành 1 map. */
+export function mergeExternalBusy(...maps: ExternalBusyMap[]): ExternalBusyMap {
+  const result: ExternalBusyMap = {};
+  for (const m of maps) {
+    for (const [day, intervals] of Object.entries(m)) {
+      (result[day] ||= []).push(...intervals);
+    }
+  }
+  return result;
+}
+
 function intersect(a: Interval, b: Interval): Interval | null {
   const start = Math.max(a.start, b.start);
   const end = Math.min(a.end, b.end);

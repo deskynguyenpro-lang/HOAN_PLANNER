@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, X, Trash2, Plus, Repeat, Zap } from "lucide-react";
+import { Check, X, Trash2, Plus, Repeat, Zap, Lock } from "lucide-react";
 import { pillarOf } from "@/lib/domain/pillars";
-import { decToLabel, fmtHours, pad } from "@/lib/domain/dates";
+import { decToLabel, fmtHours, pad, parseKey } from "@/lib/domain/dates";
 import {
   getEffectiveBlocks,
   layoutDayBlocks,
@@ -13,6 +13,8 @@ import { useStore } from "@/lib/data/store";
 import { fetchIdentity } from "@/lib/data/identity-store";
 import { isCoreFocusGoal, type IdentityProfile } from "@/lib/domain/identity";
 import { ENERGY_META, deferSeverity } from "@/lib/domain/energy";
+import { fetchFixedBlocks } from "@/lib/data/fixed-blocks-store";
+import type { FixedTimeBlock } from "@/lib/domain/fixedBlocks";
 import { ReasonModal } from "./ReasonModal";
 
 const HOUR_START = 5;
@@ -30,15 +32,20 @@ export function TimelineDay({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [reasonFor, setReasonFor] = useState<string | null>(null);
   const [identity, setIdentity] = useState<IdentityProfile | null>(null);
+  const [fixedBlocks, setFixedBlocks] = useState<FixedTimeBlock[]>([]);
 
   useEffect(() => {
     fetchIdentity()
       .then(setIdentity)
       .catch(() => setIdentity(null));
+    fetchFixedBlocks()
+      .then(setFixedBlocks)
+      .catch(() => setFixedBlocks([]));
   }, []);
 
   const blocks = getEffectiveBlocks(dateKey, goals, logs).filter((b) => !b.hidden);
   const goalMap = Object.fromEntries(goals.map((g) => [g.id, g]));
+  const todaysFixedBlocks = fixedBlocks.filter((b) => b.days.includes(parseKey(dateKey).getDay()));
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -104,6 +111,35 @@ export function TimelineDay({
               <div className="flex-1" />
             </div>
           ))}
+
+          {todaysFixedBlocks.map((fb) => {
+            const top = (fb.start - HOUR_START) * ROW_H;
+            // Nếu khung giờ kéo qua nửa đêm (VD "Ngủ" 22:30 + 8h), chỉ vẽ tới
+            // hết lưới của ngày hiện tại — phần qua ngày mới đã được chặn sẵn
+            // bởi SLEEP_WINDOW của bộ xếp lịch, không cần vẽ tràn xuống.
+            const visibleDuration = Math.min(fb.duration, HOUR_END - fb.start);
+            const height = Math.max(24, visibleDuration * ROW_H - 4);
+            return (
+              <div
+                key={fb.id}
+                className="absolute rounded-lg px-2 py-1 flex items-center gap-1.5"
+                style={{
+                  left: 48,
+                  right: 8,
+                  top,
+                  height,
+                  background:
+                    "repeating-linear-gradient(135deg, var(--chip) 0px, var(--chip) 6px, var(--surface-2) 6px, var(--surface-2) 12px)",
+                  border: "1px dashed var(--text-3)",
+                  zIndex: 0,
+                }}
+                title={`${fb.label} (cố định — AI không xếp task vào đây)`}
+              >
+                <Lock size={10} style={{ color: "var(--text-3)", flexShrink: 0 }} />
+                <span className="truncate text-text-3 text-[10.5px] font-semibold">{fb.label}</span>
+              </div>
+            );
+          })}
 
           {layoutDayBlocks(blocks).map(({ block: b, col, totalCols }) => {
             const g = goalMap[b.goalId];
