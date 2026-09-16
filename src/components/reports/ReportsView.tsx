@@ -23,7 +23,6 @@ import {
   TrendingUp,
   TrendingDown,
   PieChart as PieIcon,
-  Target,
 } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatChip, Segmented, ProgressBar, PillarDot } from "@/components/ui/bits";
@@ -31,15 +30,12 @@ import { useChartTheme } from "@/components/charts/theme";
 import { useStore } from "@/lib/data/store";
 import { PILLARS, pillarOf } from "@/lib/domain/pillars";
 import { addDays, fmtHours, parseKey, toKey, todayKey } from "@/lib/domain/dates";
-import {
-  categoryTotals,
-  dayStatsFromBlocks,
-  objectiveProgress,
-  hoursForGoalsInRange,
-} from "@/lib/domain/stats";
+import { categoryTotals, dayStatsFromBlocks } from "@/lib/domain/stats";
 import { computeStreak, longestStreak } from "@/lib/domain/streak";
 import { WEEKDAYS_VI } from "@/lib/domain/dates";
 import { AIInsightsCard } from "./AIInsightsCard";
+import { GoalVelocitySection } from "./GoalVelocityCard";
+import { PillarAllocationCard } from "./PillarAllocationCard";
 
 export function ReportsView() {
   const { goals, logs, objectives } = useStore();
@@ -66,6 +62,12 @@ export function ReportsView() {
     (a, b) => b.hours - a.hours,
   );
   const maxHours = Math.max(0.1, ranked[0]?.hours || 0.1);
+
+  const last30Totals = useMemo(
+    () => categoryTotals(goals, logs, addDays(today, -29), today),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [goals, logs],
+  );
 
   const weekTotals = categoryTotals(goals, logs, weekStart, today);
   const weekTotal = Object.values(weekTotals).reduce((a, b) => a + b, 0);
@@ -218,43 +220,10 @@ export function ReportsView() {
 
       <AIInsightsCard />
 
+      <PillarAllocationCard actualHoursByPillar={last30Totals} />
+
       {activeObjectives.length > 0 && (
-        <Card>
-          <CardHeader
-            title="Hiệu quả theo mục tiêu lớn"
-            icon={<Target size={16} className="text-brand" />}
-          />
-          <div className="space-y-3.5">
-            {activeObjectives.map((o) => {
-              const prog = objectiveProgress(o);
-              const linkedIds = goals
-                .filter((g) => g.objectiveId === o.id)
-                .map((g) => g.id);
-              const hours30 = hoursForGoalsInRange(
-                linkedIds,
-                logs,
-                addDays(today, -29),
-                today,
-              );
-              return (
-                <div key={o.id}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-text text-[13px] font-bold">{o.name}</span>
-                    <span className="text-text-2 text-[11.5px] num">
-                      {fmtHours(hours30)} / 30 ngày
-                    </span>
-                  </div>
-                  <ProgressBar pct={prog.pct} height={7} />
-                  <div className="text-text-3 text-[11px] mt-1 num">
-                    {prog.pct}% tiến độ · {prog.current}
-                    {o.unit} / {o.targetValue}
-                    {o.unit}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
+        <GoalVelocitySection objectives={objectives} goals={goals} logs={logs} />
       )}
 
       {!hasAnyData ? (

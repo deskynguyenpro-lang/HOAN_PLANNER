@@ -102,6 +102,136 @@ export function objectiveProgress(obj: Objective) {
   return { current, pct, sorted, daysLeft };
 }
 
+/** % tiến độ (0-100) của 1 giá trị cụ thể theo hướng tăng/giảm của mục tiêu. */
+function pctForValue(obj: Objective, value: number): number {
+  const direction = obj.targetValue >= obj.startValue ? 1 : -1;
+  const range = Math.abs(obj.targetValue - obj.startValue) || 1;
+  const raw = direction === 1 ? value - obj.startValue : obj.startValue - value;
+  return Math.max(0, Math.min(100, Math.round((raw / range) * 100)));
+}
+
+export interface PredictiveVelocityPoint {
+  date: string;
+  planned: number | null;
+  actual: number | null;
+  projected: number | null;
+}
+
+export interface PredictiveVelocity {
+  objectiveId: string;
+  objectiveName: string;
+  hasEnoughData: boolean;
+  currentPct: number;
+  /** % tiến độ đạt được mỗi ngày, tính theo `historicalDays` ngày gần nhất (rolling window). */
+  actualCompletionRatePctPerDay: number;
+  deadline: string | null;
+  /** 'YYYY-MM-DD' — null nếu chưa đủ dữ liệu hoặc không có deadline để so sánh. */
+  predictedCompletionDate: string | null;
+  /** > 0 = dự kiến trễ so với deadline, <= 0 = đúng hoặc sớm hạn. */
+  lateDays: number | null;
+  chartSeries: PredictiveVelocityPoint[];
+}
+
+/**
+ * Dự báo tiến độ 1 mục tiêu lớn ("Goal" trong yêu cầu gốc — Objective trong
+ * app này, vì đây là thực thể có deadline + check-in thật) dựa trên tốc độ
+ * tiến bộ THỰC TẾ trong `historicalDays` ngày gần nhất (rolling window,
+ * không lấy trung bình từ lúc tạo — phản ánh đúng nhịp gần đây hơn).
+ */
+export function calculatePredictiveVelocity(
+  objective: Objective,
+  historicalDays = 30,
+  now: Date = new Date(),
+): PredictiveVelocity {
+  const { current, sorted, daysLeft } = objectiveProgress(objective);
+  const currentPct = pctForValue(objective, current);
+  const todayStr = toKey(now);
+  // Chuẩn hoá về đúng nửa đêm (bỏ giờ:phút:giây của `now`) trước khi so sánh
+  // với ngày check-in (parseKey luôn trả về mốc nửa đêm) — nếu không, check-in
+  // đúng ngày biên có thể bị loại sai chỉ vì `now` không phải nửa đêm.
+  const windowStart = parseKey(toKey(addDays(now, -historicalDays)));
+
+  const base: PredictiveVelocity = {
+    objectiveId: objective.id,
+    objectiveName: objective.name,
+    hasEnoughData: false,
+    currentPct,
+    actualCompletionRatePctPerDay: 0,
+    deadline: objective.deadline || null,
+    predictedCompletionDate: null,
+    lateDays: null,
+    chartSeries: [],
+  };
+
+  const inWindow = sorted.filter((c) => parseKey(c.date) >= windowStart);
+  // Cần >= 2 điểm để tính tốc độ; nếu window gần chưa đủ, dùng toàn bộ lịch sử thay thế.
+  const usable = inWindow.length >= 2 ? inWindow : sorted;
+  if (usable.length < 2) return base;
+
+  const first = usable[0];
+  const last = usable[usable.length - 1];
+  const daysElapsed = (parseKey(last.date).getTime() - parseKey(first.date).getTime()) / 86400000;
+  if (daysElapsed <= 0) return base;
+
+  const direction = objective.targetValue >= objective.startValue ? 1 : -1;
+  const progressSoFar = direction === 1 ? last.value - first.value : first.value - last.value;
+  const ratePerDay = progressSoFar / daysElapsed; // đơn vị gốc/ngày, luôn dương khi đang tiến bộ
+  // Giá trị gốc thay đổi theo `direction` mỗi ngày (VD: giảm cân thì giá trị
+  // giảm khi tiến bộ) — nhân với direction để quy đổi đúng chiều trước khi
+  // tính % (nếu cộng thẳng ratePerDay sẽ SAI chiều cho mục tiêu dạng giảm).
+  const pctPerDay = pctForValue(objective, first.value + direction * ratePerDay) - pctForValue(objective, first.value);
+
+  const fromDate = parseKey(sorted[0].date);
+  const planned = (dateStr: string): number | null => {
+    if (!objective.deadline) return null;
+    const d = parseKey(dateStr);
+    const total = parseKey(objective.deadline).getTime() - fromDate.getTime();
+    if (total <= 0) return null;
+    return Math.max(0, Math.min(100, ((d.getTime() - fromDate.getTime()) / total) * 100));
+  };
+
+  const chartSeries: PredictiveVelocityPoint[] = [
+    { date: sorted[0].date, planned: planned(sorted[0].date), actual: pctForValue(objective, sorted[0].value), projected: null },
+    ...sorted.slice(1).map((c) => ({
+      date: c.date,
+      planned: planned(c.date),
+      actual: pctForValue(objective, c.value),
+      projected: null,
+    })),
+  ];
+  if (sorted[sorted.length - 1].date !== todayStr) {
+    chartSeries.push({ date: todayStr, planned: planned(todayStr), actual: currentPct, projected: currentPct });
+  } else {
+    chartSeries[chartSeries.length - 1].projected = currentPct;
+  }
+
+  const remaining = direction === 1 ? objective.targetValue - current : current - objective.targetValue;
+  if (remaining <= 0 || ratePerDay === 0) {
+    return { ...base, hasEnoughData: true, actualCompletionRatePctPerDay: pctPerDay, chartSeries };
+  }
+
+  const daysNeeded = remaining / ratePerDay;
+  if (!Number.isFinite(daysNeeded) || daysNeeded < 0) {
+    return { ...base, hasEnoughData: true, actualCompletionRatePctPerDay: pctPerDay, chartSeries };
+  }
+  const predictedDate = addDays(now, Math.ceil(daysNeeded));
+  const predictedCompletionDate = toKey(predictedDate);
+  const lateDays = daysLeft === null ? null : Math.ceil(daysNeeded - daysLeft);
+
+  if (predictedCompletionDate !== todayStr) {
+    chartSeries.push({ date: predictedCompletionDate, planned: planned(predictedCompletionDate), actual: null, projected: 100 });
+  }
+
+  return {
+    ...base,
+    hasEnoughData: true,
+    actualCompletionRatePctPerDay: pctPerDay,
+    predictedCompletionDate,
+    lateDays,
+    chartSeries,
+  };
+}
+
 export interface VelocityAlert {
   objectiveId: string;
   objectiveName: string;

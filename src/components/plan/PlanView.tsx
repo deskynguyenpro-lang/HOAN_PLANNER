@@ -14,6 +14,7 @@ import { CheckinForm } from "./CheckinForm";
 import { GoalRow } from "./GoalRow";
 import { GoalForm } from "./GoalForm";
 import { BufferCapacityWidget } from "./BufferCapacityWidget";
+import { GoogleCalendarCard } from "./GoogleCalendarCard";
 
 type Panel =
   | { kind: "none" }
@@ -55,6 +56,7 @@ export function PlanView() {
       </div>
 
       <BufferCapacityWidget />
+      <GoogleCalendarCard />
 
       {/* ─── Mục tiêu lớn ────────────────────────────────────────────────── */}
       <section>

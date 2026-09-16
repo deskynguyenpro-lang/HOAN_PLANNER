@@ -259,6 +259,24 @@ group("10. Nhiều task bỏ lỡ cùng lượt không đề xuất trùng giờ
   );
 });
 
+// ─── 11. Không xếp chèn lên khung giờ bận từ Google Calendar (external) ──
+group("11. Lịch ngoài (Google Calendar) là rào cản tuyệt đối", () => {
+  const yKey = toKey(addDays(NOW, -1));
+  const tKey = toKey(addDays(NOW, 1));
+  const goal = makeGoal("g11", "MEDIUM");
+  const missedBlock = makeBlock("b11", "g11", 9, 1);
+  const logs: Logs = { [yKey]: { blocks: [missedBlock] } };
+  // Chặn toàn bộ khung giờ thức dậy trên lịch ngoài, chỉ để hở đúng 14h-15h.
+  const externalBusyByDay = {
+    [tKey]: [{ start: 6, end: 14 }],
+  };
+
+  const { outcomes } = detectAndProcessMissedTasks([goal], logs, NOW, externalBusyByDay);
+  const o = scheduled(outcomes[0]);
+  assert(o.proposed.dateKey === tKey, "vẫn xếp được trong ngày có lịch ngoài (còn khe hở)");
+  assert(o.proposed.start >= 14, "không đề xuất vào khung giờ Google Calendar báo bận");
+});
+
 // ─── Kết quả ─────────────────────────────────────────────────────────────
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

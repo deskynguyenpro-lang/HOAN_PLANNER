@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/Toast";
 import { fetchIdentity } from "@/lib/data/identity-store";
 import { fetchBufferCapacityPct } from "@/lib/data/settings-store";
 import { appendActionLog } from "@/lib/data/ai-log-store";
+import { fetchExternalBusyBlocks, isGoogleCalendarFeatureAvailable } from "@/lib/data/google-calendar-store";
 import type { IdentityProfile } from "@/lib/domain/identity";
 import { buildUserFullContext } from "@/lib/domain/aiContext";
 import {
@@ -157,7 +158,20 @@ export function AiChatWidget() {
   async function handleReschedule() {
     if (loading) return;
     const now = new Date();
-    const { nextLogs, outcomes } = detectAndProcessMissedTasks(goalsRef.current, logsRef.current, now);
+
+    let externalBusyByDay = {};
+    if (isGoogleCalendarFeatureAvailable()) {
+      const from = now.toISOString();
+      const to = new Date(now.getTime() + 8 * 86400000).toISOString();
+      externalBusyByDay = await fetchExternalBusyBlocks(from, to).catch(() => ({}));
+    }
+
+    const { nextLogs, outcomes } = detectAndProcessMissedTasks(
+      goalsRef.current,
+      logsRef.current,
+      now,
+      externalBusyByDay,
+    );
     setLogs(nextLogs);
 
     if (outcomes.length === 0) {

@@ -6,6 +6,7 @@ import {
   applyProposedSchedule,
   detectAndProcessMissedTasks,
   type AutonomyLevel,
+  type ExternalBusyMap,
   type RescheduleOutcome,
 } from "@/lib/domain/reschedule";
 
@@ -36,6 +37,10 @@ interface ReschedulePayload {
   logs: Logs;
   confirm?: boolean;
   now?: string;
+  /** Khung giờ bận từ Google Calendar (nếu đã kết nối) — client tự lấy qua
+   * /api/integrations/google-calendar/events rồi gửi kèm, để AI Rescheduler
+   * không bao giờ xếp chèn lên lịch ngoài. */
+  externalBusyByDay?: ExternalBusyMap;
 }
 
 export async function POST(req: NextRequest) {
@@ -71,7 +76,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "`now` không hợp lệ." }, { status: 400 });
   }
 
-  const { nextLogs, outcomes } = detectAndProcessMissedTasks(goals, logs, now);
+  const externalBusyByDay = body.externalBusyByDay && typeof body.externalBusyByDay === "object" ? body.externalBusyByDay : {};
+  const { nextLogs, outcomes } = detectAndProcessMissedTasks(goals, logs, now, externalBusyByDay);
 
   const shouldApply = autonomyLevel === 3 || (autonomyLevel === 2 && body.confirm === true);
   if (!shouldApply) {

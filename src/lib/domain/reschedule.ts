@@ -95,10 +95,18 @@ export interface DetectAndProcessResult {
 }
 
 // ─── Tiện ích khoảng thời gian (đơn vị: giờ thập phân trong 1 ngày) ──────
-interface Interval {
+export interface Interval {
   start: number;
   end: number;
 }
+
+/**
+ * Khung giờ bận từ lịch ngoài (Google Calendar) theo từng ngày — AI
+ * Rescheduler coi đây là rào cản tuyệt đối giống việc cố định, nhưng KHÔNG
+ * tính vào ngân sách giờ/tuần (weeklyLoadHours) vì đó là ngân sách công việc
+ * của riêng các mục tiêu, không phải cuộc họp/lịch cá nhân bên ngoài.
+ */
+export type ExternalBusyMap = Record<string, Interval[]>;
 
 function intersect(a: Interval, b: Interval): Interval | null {
   const start = Math.max(a.start, b.start);
@@ -140,7 +148,13 @@ interface FreeSlot extends Interval {
   isBuffer: boolean;
 }
 
-function freeSlotsForDay(dateKey: string, goals: Goal[], logs: Logs, excludeBlockId?: string): FreeSlot[] {
+function freeSlotsForDay(
+  dateKey: string,
+  goals: Goal[],
+  logs: Logs,
+  excludeBlockId?: string,
+  externalBusy: Interval[] = [],
+): FreeSlot[] {
   const all = getEffectiveBlocks(dateKey, goals, logs).filter(
     (b) => !b.hidden && b.id !== excludeBlockId,
   );
@@ -148,9 +162,11 @@ function freeSlotsForDay(dateKey: string, goals: Goal[], logs: Logs, excludeBloc
   const buffers = all.filter((b) => !b.skipped && !b.completed && b.isBufferBlock);
 
   const dayWindow: Interval = { start: SLEEP_WINDOW.end, end: SLEEP_WINDOW.start };
+  // Lịch ngoài (Google Calendar) luôn là rào cản tuyệt đối — không bao giờ
+  // được coi là buffer, nên trừ thẳng khỏi dayWindow cùng với việc cố định.
   const gaps = subtractIntervals(
     [dayWindow],
-    fixed.map((b) => ({ start: b.start, end: b.start + b.duration })),
+    [...fixed.map((b) => ({ start: b.start, end: b.start + b.duration })), ...externalBusy],
   );
 
   const slots: FreeSlot[] = [];
@@ -244,6 +260,7 @@ export function calculateAutoReschedule(
   goals: Goal[],
   logs: Logs,
   now: Date = new Date(),
+  externalBusyByDay: ExternalBusyMap = {},
 ): ProposedSchedule | null {
   const duration = missed.block.duration;
   const energyWindows = energyWindowsFor(missed.block.energyLevel);
@@ -252,11 +269,15 @@ export function calculateAutoReschedule(
   for (let i = 1; i <= RESCHEDULE_LOOKAHEAD_DAYS; i++) {
     const day = addDays(now, i);
     const dateKey = toKey(day);
-    const slots = freeSlotsForDay(dateKey, goals, logs, missed.block.id);
+    const dayExternal = externalBusyByDay[dateKey] || [];
+    const slots = freeSlotsForDay(dateKey, goals, logs, missed.block.id, dayExternal);
     // Ưu tiên buffer trước (Buffer First), rồi mới đến giờ trống thường.
     const ordered = [...slots.filter((s) => s.isBuffer), ...slots.filter((s) => !s.isBuffer)];
 
-    const existingBusy = busyIntervalsForDay(dateKey, goals, logs, missed.block.id);
+    // Lịch ngoài không tính vào ngân sách giờ/tuần (đó là ngân sách công việc
+    // của riêng các mục tiêu) nhưng vẫn phải tính vào rào cản "không quá 2h
+    // liên tục" — 1 cuộc họp 1h ngay trước/sau task cũng tính là liên tục.
+    const existingBusy = [...busyIntervalsForDay(dateKey, goals, logs, missed.block.id), ...dayExternal];
 
     for (const slot of ordered) {
       if (slot.end - slot.start < duration) continue;
@@ -303,6 +324,7 @@ export function detectAndProcessMissedTasks(
   goals: Goal[],
   logs: Logs,
   now: Date = new Date(),
+  externalBusyByDay: ExternalBusyMap = {},
 ): DetectAndProcessResult {
   const goalMap = Object.fromEntries(goals.map((g) => [g.id, g]));
   const todayKeyStr = toKey(now);
@@ -352,7 +374,7 @@ export function detectAndProcessMissedTasks(
         continue;
       }
 
-      const proposed = calculateAutoReschedule(missed, goals, simulatedLogs, now);
+      const proposed = calculateAutoReschedule(missed, goals, simulatedLogs, now, externalBusyByDay);
       if (proposed) {
         const outcome: RescheduleOutcome = {
           kind: "scheduled",
