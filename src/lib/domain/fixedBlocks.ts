@@ -21,6 +21,10 @@ export interface FixedTimeBlock {
 
 const EXPAND_DAYS = 14; // đủ dài hơn RESCHEDULE_LOOKAHEAD_DAYS (7 ngày) của reschedule.ts
 
+function pushBusy(map: ExternalBusyMap, dateKey: string, interval: { start: number; end: number }) {
+  (map[dateKey] ||= []).push(interval);
+}
+
 /** Trải các khung giờ cố định (lặp lại hằng tuần) thành ExternalBusyMap cho `days` ngày tới. */
 export function expandFixedBlocksToExternalBusy(
   blocks: FixedTimeBlock[],
@@ -33,10 +37,19 @@ export function expandFixedBlocksToExternalBusy(
   for (let i = 0; i < days; i++) {
     const d = addDays(now, i);
     const weekday = d.getDay();
+    const prevWeekday = (weekday + 6) % 7;
     const dateKey = toKey(d);
-    const todays = blocks.filter((b) => b.days.includes(weekday));
-    if (todays.length === 0) continue;
-    map[dateKey] = todays.map((b) => ({ start: b.start, end: b.start + b.duration }));
+
+    // Khung giờ lặp vào đúng thứ hôm nay -> phần trong ngày hôm nay.
+    blocks
+      .filter((b) => b.days.includes(weekday))
+      .forEach((b) => pushBusy(map, dateKey, { start: b.start, end: Math.min(b.start + b.duration, 24) }));
+
+    // Khung giờ lặp vào hôm qua nhưng kéo qua nửa đêm (VD ca đêm 22:00-06:00)
+    // -> phần dư sau 24h đổ sang đầu ngày hôm nay.
+    blocks
+      .filter((b) => b.days.includes(prevWeekday) && b.start + b.duration > 24)
+      .forEach((b) => pushBusy(map, dateKey, { start: 0, end: b.start + b.duration - 24 }));
   }
   return map;
 }

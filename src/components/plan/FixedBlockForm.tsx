@@ -2,9 +2,14 @@
 
 import { useState } from "react";
 import { Sheet } from "@/components/ui/Sheet";
-import { Field, TextInput, ChipSelect, DayPicker } from "@/components/ui/Field";
-import { decToLabel, timeStrToDec } from "@/lib/domain/dates";
+import { Field, TextInput, DayPicker } from "@/components/ui/Field";
+import { decToLabel, fmtHours, timeStrToDec } from "@/lib/domain/dates";
 import type { FixedTimeBlock } from "@/lib/domain/fixedBlocks";
+
+function endLabelFor(block: FixedTimeBlock): string {
+  const end = block.start + block.duration;
+  return decToLabel(end >= 24 ? end - 24 : end);
+}
 
 export function FixedBlockForm({
   block,
@@ -17,17 +22,24 @@ export function FixedBlockForm({
 }) {
   const editing = !!block;
   const [label, setLabel] = useState(block?.label ?? "");
-  const [time, setTime] = useState(block ? decToLabel(block.start) : "12:00");
-  const [duration, setDuration] = useState(block?.duration ?? 1);
+  const [startTime, setStartTime] = useState(block ? decToLabel(block.start) : "08:00");
+  const [endTime, setEndTime] = useState(block ? endLabelFor(block) : "09:00");
   const [days, setDays] = useState<number[]>(block?.days ?? [1, 2, 3, 4, 5]);
+
+  const startDec = timeStrToDec(startTime);
+  const endDec = timeStrToDec(endTime);
+  // Giờ kết thúc <= giờ bắt đầu -> hiểu là qua nửa đêm (VD ca đêm 22:00-06:00).
+  const duration = endDec > startDec ? endDec - startDec : 24 - startDec + endDec;
+  const overnight = endDec <= startDec;
 
   const submit = () => {
     if (!label.trim()) return;
     if (days.length === 0) return;
+    if (duration <= 0) return;
     onSave({
       id: block?.id ?? `fb_${Date.now()}`,
       label: label.trim(),
-      start: timeStrToDec(time),
+      start: startDec,
       duration,
       days,
     });
@@ -57,23 +69,22 @@ export function FixedBlockForm({
             value={label}
             autoFocus
             onChange={(e) => setLabel(e.target.value)}
-            placeholder='VD: "Ăn trưa", "Đón con", "Họp giao ban"'
+            placeholder='VD: "Ăn trưa", "Đón con", "Công việc trên cty"'
           />
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Giờ bắt đầu">
-            <TextInput type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            <TextInput type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
           </Field>
-          <Field label="Kéo dài">
-            <ChipSelect
-              options={[0.25, 0.5, 1, 1.5, 2, 8]}
-              value={duration}
-              onChange={setDuration}
-              format={(v) => (v < 1 ? `${v * 60}p` : `${v}h`)}
-            />
+          <Field label="Giờ kết thúc">
+            <TextInput type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
           </Field>
         </div>
+        <p className="text-text-3 text-[11px] -mt-1">
+          Kéo dài {fmtHours(duration)}
+          {overnight ? " — qua ngày hôm sau" : ""}
+        </p>
 
         <Field label="Ngày lặp lại">
           <DayPicker value={days} onChange={setDays} />

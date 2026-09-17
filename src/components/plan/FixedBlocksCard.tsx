@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
-import { decToLabel, fmtHours } from "@/lib/domain/dates";
+import { decToLabel } from "@/lib/domain/dates";
 import type { FixedTimeBlock } from "@/lib/domain/fixedBlocks";
 import { fetchFixedBlocks, saveFixedBlocks } from "@/lib/data/fixed-blocks-store";
 import { FixedBlockForm } from "./FixedBlockForm";
@@ -24,6 +24,12 @@ function daysLabel(days: number[]): string {
   if (sorted.length === 7) return "hằng ngày";
   if (sorted.join(",") === "1,2,3,4,5") return "T2–T6";
   return sorted.map((d) => WEEKDAY_LABEL[d]).join(", ");
+}
+
+function timeRangeLabel(b: FixedTimeBlock): string {
+  const end = b.start + b.duration;
+  const endLabel = decToLabel(end >= 24 ? end - 24 : end);
+  return `${decToLabel(b.start)}–${endLabel}${end >= 24 ? " (+1 ngày)" : ""}`;
 }
 
 export function FixedBlocksCard() {
@@ -92,7 +98,7 @@ export function FixedBlocksCard() {
               <div className="min-w-0">
                 <div className="text-text text-[12.5px] font-semibold truncate">{b.label}</div>
                 <div className="text-text-3 text-[11px] num mt-0.5">
-                  {decToLabel(b.start)} · {fmtHours(b.duration)} · {daysLabel(b.days)}
+                  {timeRangeLabel(b)} · {daysLabel(b.days)}
                 </div>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">

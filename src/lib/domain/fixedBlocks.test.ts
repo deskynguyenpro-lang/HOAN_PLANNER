@@ -41,7 +41,19 @@ group("2. Không lặp vào ngày không khai báo", () => {
   assert(Object.keys(map).length === 0, "không có entry nào cho ngày Chủ nhật");
 });
 
-group("3. AI Rescheduler không xếp chèn lên khung giờ cố định (tích hợp thật)", () => {
+group("3. Khung giờ qua nửa đêm (VD ca đêm 22:00-06:00) đổ sang đầu ngày sau", () => {
+  // start=22, duration=8 -> kết thúc lúc 6h SÁNG NGÀY SAU. Thứ Tư (16/9) có
+  // trong days -> phải chặn 22h-24h của thứ Tư VÀ 0h-6h của thứ Năm (17/9).
+  const nightShift: FixedTimeBlock = { id: "f3", label: "Ca đêm", start: 22, duration: 8, days: [3] };
+  const map = expandFixedBlocksToExternalBusy([nightShift], NOW, 2);
+  const wedKey = toKey(NOW);
+  const thuKey = toKey(new Date(2026, 8, 17));
+
+  assert(!!map[wedKey]?.some((iv) => iv.start === 22 && iv.end === 24), "chặn đúng 22h-24h ngày bắt đầu (thứ Tư)");
+  assert(!!map[thuKey]?.some((iv) => iv.start === 0 && iv.end === 6), "phần dư qua nửa đêm chặn đúng 0h-6h ngày sau (thứ Năm)");
+});
+
+group("4. AI Rescheduler không xếp chèn lên khung giờ cố định (tích hợp thật)", () => {
   const goal: Goal = {
     id: "g1",
     name: "Việc bị lỡ",
