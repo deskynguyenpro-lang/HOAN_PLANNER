@@ -13,8 +13,8 @@ import { useStore } from "@/lib/data/store";
 import { fetchIdentity } from "@/lib/data/identity-store";
 import { isCoreFocusGoal, type IdentityProfile } from "@/lib/domain/identity";
 import { ENERGY_META, deferSeverity } from "@/lib/domain/energy";
-import { fetchFixedBlocks } from "@/lib/data/fixed-blocks-store";
-import type { FixedTimeBlock } from "@/lib/domain/fixedBlocks";
+import { fetchFixedBlockExceptions, fetchFixedBlocks } from "@/lib/data/fixed-blocks-store";
+import type { FixedBlockException, FixedTimeBlock } from "@/lib/domain/fixedBlocks";
 import { ReasonModal } from "./ReasonModal";
 
 const HOUR_START = 5;
@@ -33,6 +33,7 @@ export function TimelineDay({
   const [reasonFor, setReasonFor] = useState<string | null>(null);
   const [identity, setIdentity] = useState<IdentityProfile | null>(null);
   const [fixedBlocks, setFixedBlocks] = useState<FixedTimeBlock[]>([]);
+  const [fixedExceptions, setFixedExceptions] = useState<FixedBlockException[]>([]);
 
   useEffect(() => {
     fetchIdentity()
@@ -41,11 +42,26 @@ export function TimelineDay({
     fetchFixedBlocks()
       .then(setFixedBlocks)
       .catch(() => setFixedBlocks([]));
+    fetchFixedBlockExceptions()
+      .then(setFixedExceptions)
+      .catch(() => setFixedExceptions([]));
   }, []);
 
   const blocks = getEffectiveBlocks(dateKey, goals, logs).filter((b) => !b.hidden);
   const goalMap = Object.fromEntries(goals.map((g) => [g.id, g]));
-  const todaysFixedBlocks = fixedBlocks.filter((b) => b.days.includes(parseKey(dateKey).getDay()));
+  // Áp dụng ngoại lệ đúng ngày này (nghỉ hẳn/CANCELLED hoặc đổi giờ/MODIFIED)
+  // trước khi hiển thị — không đụng tới quy tắc lặp lại chung của block.
+  const todaysFixedBlocks = fixedBlocks
+    .filter((b) => b.days.includes(parseKey(dateKey).getDay()))
+    .map((b) => {
+      const ex = fixedExceptions.find((e) => e.blockId === b.id && e.date === dateKey);
+      if (ex?.status === "CANCELLED") return null;
+      if (ex?.status === "MODIFIED") {
+        return { ...b, start: ex.overrideStart ?? b.start, duration: ex.overrideDuration ?? b.duration };
+      }
+      return b;
+    })
+    .filter((b): b is FixedTimeBlock => b !== null);
 
   useEffect(() => {
     if (scrollRef.current) {

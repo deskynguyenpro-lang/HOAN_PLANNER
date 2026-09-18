@@ -19,7 +19,7 @@ import { fetchIdentity } from "@/lib/data/identity-store";
 import { fetchBufferCapacityPct } from "@/lib/data/settings-store";
 import { appendActionLog } from "@/lib/data/ai-log-store";
 import { fetchExternalBusyBlocks, isGoogleCalendarFeatureAvailable } from "@/lib/data/google-calendar-store";
-import { fetchFixedBlocks } from "@/lib/data/fixed-blocks-store";
+import { fetchFixedBlockExceptions, fetchFixedBlocks } from "@/lib/data/fixed-blocks-store";
 import { expandFixedBlocksToExternalBusy } from "@/lib/domain/fixedBlocks";
 import type { IdentityProfile } from "@/lib/domain/identity";
 import { buildUserFullContext } from "@/lib/domain/aiContext";
@@ -162,8 +162,11 @@ export function AiChatWidget() {
     if (loading) return;
     const now = new Date();
 
-    const fixedBlocks = await fetchFixedBlocks().catch(() => []);
-    const fixedBusy = expandFixedBlocksToExternalBusy(fixedBlocks, now);
+    const [fixedBlocks, fixedExceptions] = await Promise.all([
+      fetchFixedBlocks().catch(() => []),
+      fetchFixedBlockExceptions().catch(() => []),
+    ]);
+    const fixedBusy = expandFixedBlocksToExternalBusy(fixedBlocks, now, undefined, fixedExceptions);
 
     let googleBusy = {};
     if (isGoogleCalendarFeatureAvailable()) {

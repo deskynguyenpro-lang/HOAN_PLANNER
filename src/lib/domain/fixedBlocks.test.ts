@@ -2,8 +2,8 @@
  * Helper test cases cho khung giờ cố định (fixedBlocks.ts) — chạy bằng:
  * npm run test
  */
-import { toKey } from "./dates";
-import { expandFixedBlocksToExternalBusy, type FixedTimeBlock } from "./fixedBlocks";
+import { addDays, toKey } from "./dates";
+import { expandFixedBlocksToExternalBusy, type FixedBlockException, type FixedTimeBlock } from "./fixedBlocks";
 import { calculateAutoReschedule, type MissedBlockRef } from "./reschedule";
 import type { Block, Goal } from "./types";
 
@@ -51,6 +51,31 @@ group("3. Khung giờ qua nửa đêm (VD ca đêm 22:00-06:00) đổ sang đầ
 
   assert(!!map[wedKey]?.some((iv) => iv.start === 22 && iv.end === 24), "chặn đúng 22h-24h ngày bắt đầu (thứ Tư)");
   assert(!!map[thuKey]?.some((iv) => iv.start === 0 && iv.end === 6), "phần dư qua nửa đêm chặn đúng 0h-6h ngày sau (thứ Năm)");
+});
+
+group("5. Exception CANCELLED bỏ hẳn đúng 1 ngày, không ảnh hưởng ngày khác", () => {
+  const lunch: FixedTimeBlock = { id: "f5", label: "Ăn trưa", start: 12, duration: 1, days: [1, 2, 3, 4, 5] };
+  const todayKey = toKey(NOW); // Thứ Tư
+  const tomorrowKey = toKey(addDays(NOW, 1)); // Thứ Năm
+  const exceptions: FixedBlockException[] = [{ id: "e1", blockId: "f5", date: todayKey, status: "CANCELLED" }];
+
+  const map = expandFixedBlocksToExternalBusy([lunch], NOW, 2, exceptions);
+  assert(!map[todayKey], "không chặn giờ nào vào đúng ngày bị huỷ (hôm nay)");
+  assert(!!map[tomorrowKey]?.some((iv) => iv.start === 12 && iv.end === 13), "ngày khác vẫn áp dụng quy tắc lặp lại như cũ");
+});
+
+group("6. Exception MODIFIED đổi giờ đúng 1 ngày, không sửa quy tắc chung", () => {
+  const meeting: FixedTimeBlock = { id: "f6", label: "Họp giao ban", start: 9, duration: 1, days: [1, 2, 3, 4, 5] };
+  const todayKey = toKey(NOW);
+  const tomorrowKey = toKey(addDays(NOW, 1));
+  const exceptions: FixedBlockException[] = [
+    { id: "e2", blockId: "f6", date: todayKey, status: "MODIFIED", overrideStart: 14, overrideDuration: 2 },
+  ];
+
+  const map = expandFixedBlocksToExternalBusy([meeting], NOW, 2, exceptions);
+  assert(!!map[todayKey]?.some((iv) => iv.start === 14 && iv.end === 16), "hôm nay dùng đúng giờ override (14h-16h)");
+  assert(!map[todayKey]?.some((iv) => iv.start === 9), "hôm nay không còn chặn giờ gốc (9h) nữa");
+  assert(!!map[tomorrowKey]?.some((iv) => iv.start === 9 && iv.end === 10), "ngày khác vẫn dùng giờ gốc (9h-10h) như cũ");
 });
 
 group("4. AI Rescheduler không xếp chèn lên khung giờ cố định (tích hợp thật)", () => {
