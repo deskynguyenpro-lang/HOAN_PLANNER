@@ -5,7 +5,8 @@ import { isSupabaseConfigured } from "@/lib/data/local-store";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
-const PUBLIC_PATHS = ["/login", "/auth"];
+// /api/cron: Vercel Cron gọi không có phiên đăng nhập (giữ Supabase không bị tạm dừng).
+const PUBLIC_PATHS = ["/login", "/auth", "/api/cron"];
 
 /**
  * Làm mới phiên đăng nhập trên mỗi request và chặn người chưa đăng nhập
